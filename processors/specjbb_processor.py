@@ -13,47 +13,19 @@ colon-delimited format without timestamps is not supported.
 
 import re
 from typing import Dict, Any, List, Optional, Tuple
-from datetime import datetime
 from pathlib import Path
 import logging
 
 from .base_processor import BaseProcessor, ProcessorError
+from .timestamp_utils import validate_iso8601_timestamp
 from ..schema import Run, TimeSeriesPoint, create_run_key, create_sequence_key
 
 logger = logging.getLogger(__name__)
 
-# ISO 8601 pattern (e.g. 2026-02-04T17:07:07Z or with fractional seconds)
-_ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
-)
 
-
-def _validate_iso8601_timestamp(value: str, context: str) -> str:
-    """Validate and return an ISO 8601 timestamp string. Raises ProcessorError if invalid."""
-    if not value or not isinstance(value, str):
-        raise ProcessorError(
-            f"SpecJBB results require timestamps. {context} "
-            "Start_Date and End_Date must be non-empty strings."
-        )
-    value = value.strip()
-    if not value:
-        raise ProcessorError(
-            f"SpecJBB results require timestamps. {context} "
-            "Start_Date and End_Date cannot be blank."
-        )
-    if not _ISO8601_PATTERN.match(value):
-        raise ProcessorError(
-            f"SpecJBB results require valid ISO 8601 timestamps. {context} "
-            f"Got: {value!r}. Expected format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ"
-        )
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as e:
-        raise ProcessorError(
-            f"SpecJBB results require valid ISO 8601 timestamps. {context} "
-            f"Cannot parse {value!r}: {e}"
-        ) from e
-    return value
+def _validate_specjbb_timestamp(value: str, context: str) -> str:
+    """Validate ISO 8601 timestamp for SpecJBB. Raises ProcessorError if invalid."""
+    return validate_iso8601_timestamp(value, context, test_name="SpecJBB")
 
 
 class SpecJBBProcessor(BaseProcessor):
@@ -241,10 +213,10 @@ class SpecJBBProcessor(BaseProcessor):
                     f"Row: {line_stripped[:80]!r}. {e}"
                 ) from e
 
-            start_ts = _validate_iso8601_timestamp(
+            start_ts = _validate_specjbb_timestamp(
                 parts[3], f"Row Warehouses={warehouses}:"
             )
-            end_ts = _validate_iso8601_timestamp(
+            end_ts = _validate_specjbb_timestamp(
                 parts[4], f"Row Warehouses={warehouses}:"
             )
 
@@ -345,7 +317,7 @@ class SpecJBBProcessor(BaseProcessor):
                     f"SpecJBB run {run_number} sequence {idx} (warehouses={data.get('warehouses')}) "
                     "is missing start_timestamp from the CSV."
                 )
-            _validate_iso8601_timestamp(ts, f"Run {run_number}, sequence {idx}:")
+            _validate_specjbb_timestamp(ts, f"Run {run_number}, sequence {idx}:")
             seq_key = create_sequence_key(idx)
             timeseries[seq_key] = TimeSeriesPoint(
                 timestamp=ts,

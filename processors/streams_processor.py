@@ -10,47 +10,20 @@ Processes STREAMS results including:
 
 import re
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
 from pathlib import Path
 import logging
 
 from .base_processor import BaseProcessor, ProcessorError
+from .timestamp_utils import validate_iso8601_timestamp, interpolate_timestamps
+from .run_utils import run_data_timeseries_to_objects
 from ..schema import Run, TimeSeriesPoint, create_run_key, create_sequence_key
 
 logger = logging.getLogger(__name__)
 
-# ISO 8601 pattern (e.g. 2026-02-04T00:19:56Z or with fractional seconds)
-_ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
-)
 
-
-def _validate_iso8601_timestamp(value: str, context: str) -> str:
-    """Validate and return an ISO 8601 timestamp string. Raises ProcessorError if invalid."""
-    if not value or not isinstance(value, str):
-        raise ProcessorError(
-            f"STREAMS results require timestamps. {context} "
-            "Start_Date and End_Date must be non-empty strings."
-        )
-    value = value.strip()
-    if not value:
-        raise ProcessorError(
-            f"STREAMS results require timestamps. {context} "
-            "Start_Date and End_Date cannot be blank."
-        )
-    if not _ISO8601_PATTERN.match(value):
-        raise ProcessorError(
-            f"STREAMS results require valid ISO 8601 timestamps. {context} "
-            f"Got: {value!r}. Expected format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ"
-        )
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as e:
-        raise ProcessorError(
-            f"STREAMS results require valid ISO 8601 timestamps. {context} "
-            f"Cannot parse {value!r}: {e}"
-        ) from e
-    return value
+def _validate_streams_timestamp(value: str, context: str) -> str:
+    """Validate ISO 8601 timestamp for STREAMS. Raises ProcessorError if invalid."""
+    return validate_iso8601_timestamp(value, context, test_name="STREAMS")
 
 
 class StreamsProcessor(BaseProcessor):
@@ -208,11 +181,11 @@ class StreamsProcessor(BaseProcessor):
                     start_ts = parts[-2]
                     end_ts = parts[-1]
 
-                    start_timestamp = _validate_iso8601_timestamp(
+                    start_timestamp = _validate_streams_timestamp(
                         start_ts,
                         f"Run {run_number + 1}, {operation} row:"
                     )
-                    end_timestamp = _validate_iso8601_timestamp(
+                    end_timestamp = _validate_streams_timestamp(
                         end_ts,
                         f"Run {run_number + 1}, {operation} row:"
                     )
@@ -319,18 +292,9 @@ class StreamsProcessor(BaseProcessor):
 
             # Assign interpolated timestamps between start_timestamp and end_timestamp
             n = len(iteration_results)
-            start_dt = datetime.fromisoformat(start_ts.replace("Z", "+00:00"))
-            end_dt = datetime.fromisoformat(end_ts.replace("Z", "+00:00"))
+            interpolated = interpolate_timestamps(start_ts, end_ts, n)
             for sequence, item in enumerate(iteration_results):
-                if n <= 1:
-                    ts_str = start_ts
-                else:
-                    frac = sequence / (n - 1)
-                    delta_sec = (end_dt - start_dt).total_seconds() * frac
-                    point_dt = start_dt + timedelta(seconds=delta_sec)
-                    ts_str = point_dt.strftime("%Y-%m-%dT%H:%M:%S") + (
-                        f".{point_dt.microsecond:06d}".rstrip("0").rstrip(".") or ""
-                    ) + "Z"
+                ts_str = interpolated[sequence] if sequence < len(interpolated) else start_ts
                 seq_key = create_sequence_key(sequence)
                 runs[run_key]["timeseries"][seq_key] = {"timestamp": ts_str, "metrics": item["metrics"]}
 
@@ -385,34 +349,30 @@ class StreamsProcessor(BaseProcessor):
         detailed timeseries points, creates one point with start_timestamp.
         Raises ProcessorError if any timeseries point is missing a valid timestamp.
         """
-        timeseries = {}
+        run_number = run_data.get("run_number", 0)
+        run_ctx = f"STREAMS run {run_number}"
         if run_data.get("timeseries"):
-            for seq_key, ts_data in run_data["timeseries"].items():
-                ts = ts_data.get("timestamp")
-                if not ts:
-                    raise ProcessorError(
-                        f"STREAMS run {run_data.get('run_number')} timeseries point {seq_key} is missing "
-                        "a timestamp. Timestamps must come from the CSV Start_Date/End_Date or be interpolated."
-                    )
-                _validate_iso8601_timestamp(ts, f"Run {run_data.get('run_number')}, {seq_key}:")
-                timeseries[seq_key] = TimeSeriesPoint(
-                    timestamp=ts,
-                    metrics=ts_data.get("metrics", {}),
-                )
+            timeseries = run_data_timeseries_to_objects(
+                run_data["timeseries"],
+                validate_timestamp=_validate_streams_timestamp,
+                run_context=run_ctx,
+            )
         else:
             # No detailed results: create one timeseries point from CSV metrics and start_timestamp
             start_ts = run_data.get("start_timestamp")
             end_ts = run_data.get("end_timestamp")
             if not start_ts or not end_ts:
                 raise ProcessorError(
-                    f"STREAMS run {run_data.get('run_number')} has no timeseries and is missing "
+                    f"{run_ctx} has no timeseries and is missing "
                     "start_timestamp or end_timestamp from the CSV."
                 )
-            _validate_iso8601_timestamp(start_ts, f"Run {run_data.get('run_number')}:")
-            timeseries[create_sequence_key(0)] = TimeSeriesPoint(
-                timestamp=start_ts,
-                metrics=run_data.get("metrics", {}).copy(),
-            )
+            _validate_streams_timestamp(start_ts, f"{run_ctx}:")
+            timeseries = {
+                create_sequence_key(0): TimeSeriesPoint(
+                    timestamp=start_ts,
+                    metrics=run_data.get("metrics", {}).copy(),
+                )
+            }
 
         config = {
             "optimization_level": run_data.get("optimization_level", "unknown"),

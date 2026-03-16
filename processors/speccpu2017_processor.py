@@ -6,6 +6,7 @@ from pathlib import Path
 import logging
 
 from .base_processor import BaseProcessor, ProcessorError
+from .timestamp_utils import validate_iso8601_timestamp
 from ..schema import Run, PrimaryMetric, TimeSeriesPoint, create_run_key, create_sequence_key
 from ..utils.parser_utils import (
     parse_version_file,
@@ -14,39 +15,10 @@ from ..utils.parser_utils import (
 
 logger = logging.getLogger(__name__)
 
-# ISO 8601 pattern (e.g. 2026-02-26T03:21:32Z or with fractional seconds)
-_ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
-)
 
-
-def _validate_iso8601_timestamp(value: str, context: str = "") -> str:
-    """Validate and return an ISO 8601 timestamp string. Raises ProcessorError if invalid."""
-    if not value or not isinstance(value, str):
-        raise ProcessorError(
-            f"SPEC CPU 2017 results require timestamps. {context} "
-            "Start_Date and End_Date must be non-empty strings."
-        )
-    value = value.strip()
-    if not value:
-        raise ProcessorError(
-            f"SPEC CPU 2017 results require timestamps. {context} "
-            "Start_Date and End_Date cannot be blank."
-        )
-    if not _ISO8601_PATTERN.match(value):
-        raise ProcessorError(
-            f"SPEC CPU 2017 results require valid ISO 8601 timestamps. {context} "
-            f"Got: {value!r}. Expected format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ"
-        )
-    try:
-        from datetime import datetime
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as e:
-        raise ProcessorError(
-            f"SPEC CPU 2017 results require valid ISO 8601 timestamps. {context} "
-            f"Cannot parse {value!r}: {e}"
-        ) from e
-    return value
+def _validate_speccpu2017_timestamp(value: str, context: str = "") -> str:
+    """Validate ISO 8601 timestamp for SPEC CPU 2017. Raises ProcessorError if invalid."""
+    return validate_iso8601_timestamp(value, context, test_name="SPEC CPU 2017")
 
 
 class SpecCPU2017Processor(BaseProcessor):
@@ -254,8 +226,8 @@ class SpecCPU2017Processor(BaseProcessor):
             start_ts = (row.get("Start_Date") or "").strip()
             end_ts = (row.get("End_Date") or "").strip()
 
-            start_ts = _validate_iso8601_timestamp(start_ts, f"Row for benchmark {benchmark_name!r}:")
-            end_ts = _validate_iso8601_timestamp(end_ts, f"Row for benchmark {benchmark_name!r}:")
+            start_ts = _validate_speccpu2017_timestamp(start_ts, f"Row for benchmark {benchmark_name!r}:")
+            end_ts = _validate_speccpu2017_timestamp(end_ts, f"Row for benchmark {benchmark_name!r}:")
 
             all_starts.append(start_ts)
             all_ends.append(end_ts)

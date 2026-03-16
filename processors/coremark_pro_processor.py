@@ -11,48 +11,21 @@ are required; missing or malformed timestamps raise ProcessorError.
 
 import re
 from typing import Dict, Any, Optional
-from datetime import datetime
 from pathlib import Path
 import logging
 
 from .base_processor import BaseProcessor, ProcessorError
-from ..schema import Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key
+from .timestamp_utils import validate_iso8601_timestamp
+from .run_utils import run_data_timeseries_to_objects, timeseries_summary_from_metric
+from ..schema import Run, create_run_key, create_sequence_key
 from ..utils.parser_utils import read_file_content
 
 logger = logging.getLogger(__name__)
 
-# ISO 8601 pattern (e.g. 2026-02-13T20:18:29Z or with fractional seconds)
-_ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
-)
 
-
-def _validate_iso8601_timestamp(value: str, context: str) -> str:
-    """Validate and return an ISO 8601 timestamp string. Raises ProcessorError if invalid."""
-    if not value or not isinstance(value, str):
-        raise ProcessorError(
-            f"CoreMark Pro results require timestamps. {context} "
-            "Start_Date and End_Date must be non-empty strings."
-        )
-    value = value.strip()
-    if not value:
-        raise ProcessorError(
-            f"CoreMark Pro results require timestamps. {context} "
-            "Start_Date and End_Date cannot be blank."
-        )
-    if not _ISO8601_PATTERN.match(value):
-        raise ProcessorError(
-            f"CoreMark Pro results require valid ISO 8601 timestamps. {context} "
-            f"Got: {value!r}. Expected format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ"
-        )
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as e:
-        raise ProcessorError(
-            f"CoreMark Pro results require valid ISO 8601 timestamps. {context} "
-            f"Cannot parse {value!r}: {e}"
-        ) from e
-    return value
+def _validate_coremark_pro_timestamp(value: str, context: str) -> str:
+    """Validate ISO 8601 timestamp for CoreMark Pro. Raises ProcessorError if invalid."""
+    return validate_iso8601_timestamp(value, context, test_name="CoreMark Pro")
 
 
 class CoreMarkProProcessor(BaseProcessor):
@@ -215,11 +188,11 @@ class CoreMarkProProcessor(BaseProcessor):
                     f"CoreMark Pro CSV row has too few columns for Start_Date/End_Date: {line_stripped!r}"
                 )
 
-            start_ts = _validate_iso8601_timestamp(
+            start_ts = _validate_coremark_pro_timestamp(
                 parts[start_idx],
                 f"Row {sequence + 1} ({parts[0]!r}):",
             )
-            end_ts = _validate_iso8601_timestamp(
+            end_ts = _validate_coremark_pro_timestamp(
                 parts[end_idx],
                 f"Row {sequence + 1} ({parts[0]!r}):",
             )
@@ -289,40 +262,13 @@ class CoreMarkProProcessor(BaseProcessor):
         Uses start_timestamp/end_timestamp and per-sequence timestamps from the CSV.
         Raises ProcessorError if any timeseries point is missing a valid timestamp.
         """
-        timeseries = {}
-        if "timeseries" in run_data and run_data["timeseries"]:
-            for seq_key, ts_data in run_data["timeseries"].items():
-                ts = ts_data.get("timestamp")
-                if not ts:
-                    raise ProcessorError(
-                        f"CoreMark Pro run timeseries point {seq_key} is missing a timestamp. "
-                        "Timestamps must come from the CSV Start_Date/End_Date."
-                    )
-                _validate_iso8601_timestamp(ts, f"Timeseries {seq_key}:")
-                timeseries[seq_key] = TimeSeriesPoint(
-                    timestamp=ts,
-                    metrics=ts_data.get("metrics", {})
-                )
-
-        # Calculate time series summary
-        ts_summary = None
-        if timeseries:
-            # Extract multicore iterations for summary stats
-            multicore_values = []
-            for ts_point in timeseries.values():
-                if "multicore_iterations_per_sec" in ts_point.metrics:
-                    multicore_values.append(ts_point.metrics["multicore_iterations_per_sec"])
-
-            if multicore_values:
-                import statistics
-                ts_summary = TimeSeriesSummary(
-                    mean=statistics.mean(multicore_values),
-                    median=statistics.median(multicore_values),
-                    min=min(multicore_values),
-                    max=max(multicore_values),
-                    stddev=statistics.stdev(multicore_values) if len(multicore_values) > 1 else 0.0,
-                    count=len(multicore_values)
-                )
+        raw_ts = run_data.get("timeseries") or {}
+        timeseries = run_data_timeseries_to_objects(
+            raw_ts,
+            validate_timestamp=_validate_coremark_pro_timestamp,
+            run_context="CoreMark Pro run",
+        )
+        ts_summary = timeseries_summary_from_metric(timeseries, "multicore_iterations_per_sec")
 
         # Flatten workload metrics into top-level metrics with prefixes
         all_metrics = {}

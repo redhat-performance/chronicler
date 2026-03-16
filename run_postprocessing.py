@@ -316,9 +316,9 @@ def process_result_directory(
                 verify_ssl=opensearch_config.get('verify_ssl', True)
             )
 
-            logger.info(f"OpenSearch exporters initialized: {opensearch_config.get('url')}")
+            logger.info("OpenSearch exporters initialized")
         except Exception as e:
-            logger.error(f"Failed to initialize OpenSearch exporters: {e}")
+            logger.error("Failed to initialize OpenSearch exporters: %s", type(e).__name__)
             export_opensearch = False
 
     if export_horreum:

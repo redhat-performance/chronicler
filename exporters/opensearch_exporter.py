@@ -17,7 +17,7 @@ import logging
 import time
 from typing import Dict, List, Any, Optional
 from datetime import datetime
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from pathlib import Path
 import urllib.request
 import urllib.error
@@ -58,7 +58,21 @@ class OpenSearchExporter:
             max_retries: Maximum number of retry attempts
             retry_delay: Delay between retries in seconds
         """
-        self.url = url.rstrip('/')
+        if not isinstance(url, str):
+            raise ValueError(
+                f"OpenSearch url must be a string (e.g. https://host:9200), got: {type(url).__name__}"
+            )
+        url = url.strip().rstrip('/')
+        if not url or not url.startswith(('http://', 'https://')):
+            raise ValueError(
+                "OpenSearch url must be a non-empty base URL with http:// or https:// scheme"
+            )
+        parsed = urlparse(url)
+        if not parsed.netloc:
+            raise ValueError(
+                "OpenSearch url must include a host (e.g. https://host:9200)"
+            )
+        self.url = url
         self.index = index
         self.auth_token = auth_token
         self.username = username

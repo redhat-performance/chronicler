@@ -1,7 +1,7 @@
 """
 Shared fixtures and helpers for post_processing processor tests.
 
-Run from repo root (with project venv activated): PYTHONPATH=. pytest tests/post_processing/ -v
+Run from repo root (with project venv activated): PYTHONPATH=. pytest tests/ -v
 """
 
 from pathlib import Path

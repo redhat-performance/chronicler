@@ -106,7 +106,7 @@ pip install -r post_processing/requirements.txt
 **Running tests** (from repo root with venv activated). The suite includes unit/integration tests for processor timestamp validation (valid, missing, invalid, or empty timestamps in CSV/YML):
 
 ```bash
-PYTHONPATH=. pytest tests/post_processing/ -v
+PYTHONPATH=. pytest tests/ -v
 ```
 
 **Dependencies:**
@@ -627,14 +627,10 @@ GET /zathras-timeseries/_search
 ## Additional Resources
 
 ### Documentation
-- [Schema Analysis](DATA_ANALYSIS.md) - Detailed schema documentation
-- [Implementation Plan](IMPLEMENTATION_TODO.md) - Development roadmap
 - [Index Template](config/opensearch_index_template.json) - OpenSearch mappings
+- [Config README](config/README.md) - OpenSearch connection and index templates
+- [Processors README](processors/README.md) - Processor architecture and adding new benchmarks
 
-### Zathras Documentation
-- [Main README](../README.md)
-- [Testing Quickstart](../docs/testing_quickstart.md)
-- [Command Line Reference](../docs/command_line_reference.md)
 
 ### External Resources
 - [OpenSearch Query DSL](https://opensearch.org/docs/latest/query-dsl/)

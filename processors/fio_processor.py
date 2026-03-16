@@ -695,6 +695,25 @@ class FioProcessor(BaseProcessor):
 
         num_samples = len(all_bw[0])
 
+        # Strict: require every log type to have at least num_samples entries for each job.
+        # Missing or short logs would cause IndexError or statistics.mean() on empty input.
+        log_series = [
+            ("fio_bw", all_bw),
+            ("fio_iops", all_iops),
+            ("fio_lat", all_lat),
+            ("fio_clat", all_clat),
+            ("fio_slat", all_slat),
+        ]
+        for log_name, series in log_series:
+            for j in range(num_jobs):
+                n = len(series[j])
+                if n < num_samples:
+                    log_file = workload_dir / f"{log_name}.{j + 1}.log"
+                    raise ProcessorError(
+                        f"FIO timeseries requires {log_file.name} to have at least {num_samples} samples "
+                        f"(got {n}). Missing or short log files prevent building timeseries."
+                    )
+
         # Base timestamp from results only (required; validated in _build_run_object)
         base_time = datetime.utcfromtimestamp(test_timestamp)
 
@@ -707,29 +726,27 @@ class FioProcessor(BaseProcessor):
             timestamp_ms = all_bw[0][i][0]  # Milliseconds from start
             sample_time = base_time + timedelta(milliseconds=timestamp_ms)
 
-            # Aggregate metrics across jobs
-            total_bw = sum(all_bw[j][i][1] for j in range(num_jobs) if i < len(all_bw[j]))
-            total_iops = sum(all_iops[j][i][1] for j in range(num_jobs) if i < len(all_iops[j]))
-
-            # Average latencies
-            avg_lat = statistics.mean(all_lat[j][i][1] for j in range(num_jobs) if i < len(all_lat[j]))
-            avg_clat = statistics.mean(all_clat[j][i][1] for j in range(num_jobs) if i < len(all_clat[j]))
-            avg_slat = statistics.mean(all_slat[j][i][1] for j in range(num_jobs) if i < len(all_slat[j]))
+            # Aggregate metrics across jobs (validation guarantees all series have index i)
+            total_bw = sum(all_bw[j][i][1] for j in range(num_jobs))
+            total_iops = sum(all_iops[j][i][1] for j in range(num_jobs))
+            avg_lat = statistics.mean(all_lat[j][i][1] for j in range(num_jobs))
+            avg_clat = statistics.mean(all_clat[j][i][1] for j in range(num_jobs))
+            avg_slat = statistics.mean(all_slat[j][i][1] for j in range(num_jobs))
 
             total_bw_values.append(total_bw)
 
-            # Build per-job breakdown
-            jobs_data = []
-            for j in range(num_jobs):
-                if i < len(all_bw[j]):
-                    jobs_data.append({
-                        'job_number': j,
-                        'bandwidth_kbps': all_bw[j][i][1],
-                        'iops': all_iops[j][i][1],
-                        'latency_ns': all_lat[j][i][1],
-                        'clat_ns': all_clat[j][i][1],
-                        'slat_ns': all_slat[j][i][1]
-                    })
+            # Build per-job breakdown (all jobs have valid data at index i after validation)
+            jobs_data = [
+                {
+                    "job_number": j,
+                    "bandwidth_kbps": all_bw[j][i][1],
+                    "iops": all_iops[j][i][1],
+                    "latency_ns": all_lat[j][i][1],
+                    "clat_ns": all_clat[j][i][1],
+                    "slat_ns": all_slat[j][i][1],
+                }
+                for j in range(num_jobs)
+            ]
 
             timeseries[create_sequence_key(i)] = TimeSeriesPoint(
                 timestamp=sample_time.strftime("%Y-%m-%dT%H:%M:%SZ"),

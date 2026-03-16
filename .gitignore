@@ -29,3 +29,5 @@ Thumbs.db
 extracted_*/
 temp_*/
 
+# Config files
+config/export_config.yml

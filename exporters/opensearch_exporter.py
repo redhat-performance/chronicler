@@ -58,6 +58,10 @@ class OpenSearchExporter:
             max_retries: Maximum number of retry attempts
             retry_delay: Delay between retries in seconds
         """
+        if not isinstance(url, str):
+            raise ValueError(
+                f"OpenSearch url must be a string (e.g. https://host:9200), got: {type(url).__name__}"
+            )
         url = url.strip().rstrip('/')
         if not url or not url.startswith(('http://', 'https://')):
             raise ValueError(

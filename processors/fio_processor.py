@@ -693,6 +693,8 @@ class FioProcessor(BaseProcessor):
         if not all_bw or not all_bw[0]:
             return None, None
 
+        num_samples = len(all_bw[0])
+
         # Base timestamp from results only (required; validated in _build_run_object)
         base_time = datetime.utcfromtimestamp(test_timestamp)
 

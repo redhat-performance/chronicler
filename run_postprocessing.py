@@ -16,7 +16,7 @@ Usage:
     python -m post_processing.run_postprocessing --input /path/to/results --output-json results/
 
     # Use custom config
-    python -m post_processing.run_postprocessing --input /path/to/results --config export_config.yml
+    python -m post_processing.run_postprocessing --input /path/to/results --config post_processing/config/export_config.yml
 """
 
 import argparse

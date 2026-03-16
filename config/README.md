@@ -39,29 +39,45 @@ curl -k -X PUT "https://opensearch.example.com/_index_template/zathras-timeserie
   -d @opensearch_timeseries_template.json
 ```
 
-### `export_config.example.yml`
-Example configuration for OpenSearch (Horreum section is supported as a stub).
+### `export_config_example.yml`
+Example configuration for OpenSearch (Horreum section is supported as a stub). Uses `summary_index` and `timeseries_index` (and optional `username`/`password` or `auth_token`).
 
 **Setup:**
 ```bash
 # Copy example to actual config
-cp export_config.example.yml export_config.yml
+cp config/export_config_example.yml config/export_config.yml
 
 # Edit with your credentials
-vim export_config.yml
+vim config/export_config.yml
 ```
 
 **Important:** `export_config.yml` is in `.gitignore` to prevent committing credentials.
 
 ## OpenSearch Connection
 
-### Red Hat Internal OpenSearch
+The pipeline uses two indices: `summary_index` (e.g. `zathras-results`) and `timeseries_index` (e.g. `zathras-timeseries`). Auth can be username/password or a bearer token.
+
+### Example: username/password (see `export_config_example.yml`)
+```yaml
+opensearch:
+  url: "https://opensearch.example.com"
+  summary_index: "zathras-results"
+  timeseries_index: "zathras-timeseries"
+  username: "your-username"
+  password: "your-password"
+  verify_ssl: false
+```
+
+### Example: bearer token
 ```yaml
 opensearch:
   url: "https://opensearch.example.com/"
-  index: "zathras-results"
+  summary_index: "zathras-results"
+  timeseries_index: "zathras-timeseries"
   auth_token: "${OPENSEARCH_TOKEN}"
 ```
+
+(When using `auth_token`, the exporter is still created once per index; the run script passes the same URL and auth to both summary and timeseries exporters.)
 
 ### Getting a Token
 For Red Hat internal OpenSearch, obtain a token from:
@@ -76,7 +92,8 @@ from post_processing.exporters.opensearch_exporter import OpenSearchExporter
 exporter = OpenSearchExporter(
     url="https://opensearch.example.com/",
     index="zathras-results",
-    auth_token="your-token"
+    username="your-username",
+    password="your-password"
 )
 
 # Test connection
@@ -148,7 +165,7 @@ GET /zathras-results/_search
 GET /zathras-results/_search
 {
   "query": { "term": { "test.name": "coremark" }},
-  "sort": [{ "metadata.collection_timestamp": "desc" }],
+  "sort": [{ "metadata.test_timestamp": "desc" }],
   "size": 100
 }
 ```
@@ -273,7 +290,7 @@ Share this justification:
 > - Splitting indices by core count (complicates queries)
 > - Storing as JSON blobs (defeats purpose of structured search)
 > 
-> **Template files:** Available at `post_processing/config/opensearch_*_template.json`
+> **Template files:** Available at `config/opensearch_*_template.json`
 
 ### Downsides of Increasing Field Limit
 

@@ -65,7 +65,7 @@ class OpenSearchExporter:
         url = url.strip().rstrip('/')
         if not url or not url.startswith(('http://', 'https://')):
             raise ValueError(
-                f"OpenSearch url must be a full base URL with scheme (e.g. https://host:9200), got: {url!r}"
+                "OpenSearch url must be a non-empty base URL with http:// or https:// scheme"
             )
         self.url = url
         self.index = index

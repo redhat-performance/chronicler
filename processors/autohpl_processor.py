@@ -11,13 +11,12 @@ Auto HPL produces:
 - version - Test wrapper version
 """
 
-import re
-from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
 import logging
 
 from .base_processor import BaseProcessor, ProcessorError
+from .timestamp_utils import validate_iso8601_timestamp
 from ..schema import Run, TimeSeriesPoint, create_run_key, create_sequence_key
 from ..utils.parser_utils import (
     parse_version_file,
@@ -26,38 +25,10 @@ from ..utils.parser_utils import (
 
 logger = logging.getLogger(__name__)
 
-# ISO 8601 pattern (e.g. 2026-02-04T00:12:03Z or with fractional seconds)
-_ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
-)
 
-
-def _validate_iso8601_timestamp(value: str, context: str) -> str:
-    """Validate and return an ISO 8601 timestamp string. Raises ProcessorError if invalid."""
-    if not value or not isinstance(value, str):
-        raise ProcessorError(
-            f"Auto HPL results require timestamps. {context} "
-            "Start_Date and End_Date must be non-empty strings."
-        )
-    value = value.strip()
-    if not value:
-        raise ProcessorError(
-            f"Auto HPL results require timestamps. {context} "
-            "Start_Date and End_Date cannot be blank."
-        )
-    if not _ISO8601_PATTERN.match(value):
-        raise ProcessorError(
-            f"Auto HPL results require valid ISO 8601 timestamps. {context} "
-            f"Got: {value!r}. Expected format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ"
-        )
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as e:
-        raise ProcessorError(
-            f"Auto HPL results require valid ISO 8601 timestamps. {context} "
-            f"Cannot parse {value!r}: {e}"
-        ) from e
-    return value
+def _validate_autohpl_timestamp(value: str, context: str) -> str:
+    """Validate ISO 8601 timestamp for Auto HPL. Raises ProcessorError if invalid."""
+    return validate_iso8601_timestamp(value, context, test_name="Auto HPL")
 
 
 class AutoHPLProcessor(BaseProcessor):
@@ -216,8 +187,8 @@ class AutoHPLProcessor(BaseProcessor):
                             f"Auto HPL CSV: invalid numeric or column in data row: {e}"
                         ) from e
 
-                    start_timestamp = _validate_iso8601_timestamp(start_ts, "Start_Date:")
-                    end_timestamp = _validate_iso8601_timestamp(end_ts, "End_Date:")
+                    start_timestamp = _validate_autohpl_timestamp(start_ts, "Start_Date:")
+                    end_timestamp = _validate_autohpl_timestamp(end_ts, "End_Date:")
 
                     hpl_result = {
                         'variant': variant,

@@ -9,51 +9,23 @@ run-level start/end exist (e.g. run_metadata in net_results), timestamps are int
 for each data point. Missing or malformed timestamps raise ProcessorError.
 """
 
-import re
 from typing import Dict, Any, Optional, List
-from datetime import datetime, timedelta
 from pathlib import Path
 import logging
 import statistics
 
 from .base_processor import BaseProcessor, ProcessorError
-from ..schema import Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key
+from .timestamp_utils import validate_iso8601_timestamp, interpolate_timestamps
+from .run_utils import run_data_timeseries_to_objects, timeseries_summary_from_metric
+from ..schema import Run, create_run_key, create_sequence_key
 from ..utils.parser_utils import read_file_content
 
 logger = logging.getLogger(__name__)
 
-# ISO 8601 pattern (e.g. 2026-02-10T14:41:49Z or with fractional seconds)
-_ISO8601_PATTERN = re.compile(
-    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$"
-)
 
-
-def _validate_iso8601_timestamp(value: str, context: str) -> str:
-    """Validate and return an ISO 8601 timestamp string. Raises ProcessorError if invalid."""
-    if not value or not isinstance(value, str):
-        raise ProcessorError(
-            f"Uperf results require timestamps. {context} "
-            "Start_Date and End_Date must be non-empty strings."
-        )
-    value = value.strip()
-    if not value:
-        raise ProcessorError(
-            f"Uperf results require timestamps. {context} "
-            "Start_Date and End_Date cannot be blank."
-        )
-    if not _ISO8601_PATTERN.match(value):
-        raise ProcessorError(
-            f"Uperf results require valid ISO 8601 timestamps. {context} "
-            f"Got: {value!r}. Expected format: YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SS.ffffffZ"
-        )
-    try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError as e:
-        raise ProcessorError(
-            f"Uperf results require valid ISO 8601 timestamps. {context} "
-            f"Cannot parse {value!r}: {e}"
-        ) from e
-    return value
+def _validate_uperf_timestamp(value: str, context: str) -> str:
+    """Validate ISO 8601 timestamp for Uperf. Raises ProcessorError if invalid."""
+    return validate_iso8601_timestamp(value, context, test_name="Uperf")
 
 
 class UperfProcessor(BaseProcessor):
@@ -197,10 +169,10 @@ class UperfProcessor(BaseProcessor):
 
             start_ts = parts[start_idx]
             end_ts = parts[end_idx]
-            start_timestamp = _validate_iso8601_timestamp(
+            start_timestamp = _validate_uperf_timestamp(
                 start_ts, f"Row with number_procs={parts[0] if parts else '?'}:"
             )
-            end_timestamp = _validate_iso8601_timestamp(
+            end_timestamp = _validate_uperf_timestamp(
                 end_ts, f"Row with number_procs={parts[0] if parts else '?'}:"
             )
 
@@ -355,20 +327,9 @@ class UperfProcessor(BaseProcessor):
             raise ProcessorError(
                 "Uperf net_results: no data points found. Ensure iops.csv, latency.csv, throughput.csv exist."
             )
-        start_dt = datetime.fromisoformat(start_ts.replace("Z", "+00:00"))
-        end_dt = datetime.fromisoformat(end_ts.replace("Z", "+00:00"))
+        interpolated = interpolate_timestamps(start_ts, end_ts, n)
         for i, item in enumerate(data_points_ordered):
-            if n <= 1:
-                ts_str = start_ts
-            else:
-                frac = i / (n - 1)
-                delta_sec = (end_dt - start_dt).total_seconds() * frac
-                point_dt = start_dt + timedelta(seconds=delta_sec)
-                ts_str = (
-                    point_dt.strftime("%Y-%m-%dT%H:%M:%S")
-                    + (f".{point_dt.microsecond:06d}".rstrip("0").rstrip(".") or "")
-                    + "Z"
-                )
+            ts_str = interpolated[i] if i < len(interpolated) else start_ts
             seq_key = create_sequence_key(sequence)
             pd = item["point_data"]
             run_data["timeseries"][seq_key] = {
@@ -406,8 +367,8 @@ class UperfProcessor(BaseProcessor):
             raise ProcessorError(
                 "Uperf run_metadata.csv data line must have at least two columns: Start_Date,End_Date."
             )
-        start_ts = _validate_iso8601_timestamp(parts[0], "run_metadata.csv Start_Date:")
-        end_ts = _validate_iso8601_timestamp(parts[1], "run_metadata.csv End_Date:")
+        start_ts = _validate_uperf_timestamp(parts[0], "run_metadata.csv Start_Date:")
+        end_ts = _validate_uperf_timestamp(parts[1], "run_metadata.csv End_Date:")
         return start_ts, end_ts
 
     def _parse_config_csvs(
@@ -501,39 +462,11 @@ class UperfProcessor(BaseProcessor):
 
         Requires valid timestamps for every timeseries point; raises ProcessorError if any are missing or invalid.
         """
-        timeseries = {}
-        if "timeseries" in run_data and run_data["timeseries"]:
-            for seq_key, ts_data in run_data["timeseries"].items():
-                ts = ts_data.get("timestamp")
-                if not ts:
-                    raise ProcessorError(
-                        f"Uperf run timeseries point {seq_key} is missing a timestamp. "
-                        "Timestamps must come from the CSV Start_Date/End_Date or run_metadata."
-                    )
-                _validate_iso8601_timestamp(ts, f"Timeseries {seq_key}:")
-                timeseries[seq_key] = TimeSeriesPoint(
-                    timestamp=ts,
-                    metrics=ts_data.get("metrics", {}),
-                )
-
-        # Calculate time series summary using throughput as primary metric
-        ts_summary = None
-        if timeseries:
-            # Extract throughput values for summary stats
-            throughput_values = []
-            for ts_point in timeseries.values():
-                if "throughput_gbps" in ts_point.metrics and ts_point.metrics["throughput_gbps"] is not None:
-                    throughput_values.append(ts_point.metrics["throughput_gbps"])
-
-            if throughput_values:
-                ts_summary = TimeSeriesSummary(
-                    mean=statistics.mean(throughput_values),
-                    median=statistics.median(throughput_values),
-                    min=min(throughput_values),
-                    max=max(throughput_values),
-                    stddev=statistics.stdev(throughput_values) if len(throughput_values) > 1 else 0.0,
-                    count=len(throughput_values)
-                )
+        raw_ts = run_data.get("timeseries") or {}
+        timeseries = run_data_timeseries_to_objects(
+            raw_ts, validate_timestamp=_validate_uperf_timestamp, run_context="Uperf run"
+        )
+        ts_summary = timeseries_summary_from_metric(timeseries, "throughput_gbps")
 
         # Create Run object
         return Run(

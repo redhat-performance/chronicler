@@ -15,7 +15,8 @@ import logging
 import statistics
 
 from .base_processor import BaseProcessor, ProcessorError
-from ..schema import Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key
+from .run_utils import run_data_timeseries_to_objects, timeseries_summary_from_metric
+from ..schema import Run, create_run_key, create_sequence_key
 from ..utils.parser_utils import read_file_content
 
 logger = logging.getLogger(__name__)
@@ -254,39 +255,11 @@ class PassmarkProcessor(BaseProcessor):
     def _build_run_object(self, run_data: Dict[str, Any]) -> Run:
         """Convert raw run data dictionary to Run dataclass object. Requires valid timestamp per timeseries point."""
 
-        # Convert timeseries dictionary to TimeSeriesPoint objects (timestamps from YML BaselineInfo.TimeStamp)
-        timeseries = {}
-        if "timeseries" in run_data and run_data["timeseries"]:
-            for seq_key, ts_data in run_data["timeseries"].items():
-                ts = ts_data.get("timestamp")
-                if not ts:
-                    raise ProcessorError(
-                        f"Passmark run is missing timestamp for {seq_key}. "
-                        "Timestamps must come from BaselineInfo.TimeStamp in each results_all_*.yml."
-                    )
-                timeseries[seq_key] = TimeSeriesPoint(
-                    timestamp=ts,
-                    metrics=ts_data.get("metrics", {})
-                )
-
-        # Calculate time series summary using SUMM_CPU_mean as the primary metric
-        ts_summary = None
-        if timeseries:
-            # Extract SUMM_CPU values for summary stats
-            summ_cpu_values = []
-            for ts_point in timeseries.values():
-                if "SUMM_CPU" in ts_point.metrics:
-                    summ_cpu_values.append(ts_point.metrics["SUMM_CPU"])
-
-            if summ_cpu_values:
-                ts_summary = TimeSeriesSummary(
-                    mean=statistics.mean(summ_cpu_values),
-                    median=statistics.median(summ_cpu_values),
-                    min=min(summ_cpu_values),
-                    max=max(summ_cpu_values),
-                    stddev=statistics.stdev(summ_cpu_values) if len(summ_cpu_values) > 1 else 0.0,
-                    count=len(summ_cpu_values)
-                )
+        raw_ts = run_data.get("timeseries") or {}
+        timeseries = run_data_timeseries_to_objects(
+            raw_ts, validate_timestamp=None, run_context="Passmark run"
+        )
+        ts_summary = timeseries_summary_from_metric(timeseries, "SUMM_CPU")
 
         # Create Run object
         return Run(

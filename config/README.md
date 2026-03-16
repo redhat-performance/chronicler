@@ -87,7 +87,7 @@ For Red Hat internal OpenSearch, obtain a token from:
 
 ### Testing Connection
 ```python
-from exporters.opensearch_exporter import OpenSearchExporter
+from post_processing.exporters.opensearch_exporter import OpenSearchExporter
 
 exporter = OpenSearchExporter(
     url="https://opensearch.example.com/",

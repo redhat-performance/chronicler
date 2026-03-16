@@ -58,7 +58,12 @@ class OpenSearchExporter:
             max_retries: Maximum number of retry attempts
             retry_delay: Delay between retries in seconds
         """
-        self.url = url.rstrip('/')
+        url = url.strip().rstrip('/')
+        if not url or not url.startswith(('http://', 'https://')):
+            raise ValueError(
+                f"OpenSearch url must be a full base URL with scheme (e.g. https://host:9200), got: {url!r}"
+            )
+        self.url = url
         self.index = index
         self.auth_token = auth_token
         self.username = username

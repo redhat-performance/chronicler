@@ -15,7 +15,7 @@ import yaml
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from ..schema import (
@@ -163,7 +163,7 @@ class BaseProcessor(ABC):
         """Build metadata section"""
         test_name = self.get_test_name()
         system_name = self.result_dir.name
-        processing_time = datetime.utcnow()
+        processing_time = datetime.now(timezone.utc)
 
         # Try to extract actual test execution timestamp
         test_timestamp_str = self._extract_test_timestamp()
@@ -181,7 +181,7 @@ class BaseProcessor(ABC):
             document_type="zathras_test_result",
             zathras_version="1.0",
             test_timestamp=test_timestamp_str,
-            processing_timestamp=processing_time.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+            processing_timestamp=processing_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
             collection_timestamp=test_timestamp_str,  # Backward compatibility
             os_vendor=source_metadata.get("os_vendor"),
             cloud_provider=source_metadata.get("cloud_provider"),

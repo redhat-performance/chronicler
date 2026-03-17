@@ -16,13 +16,19 @@ import json
 import logging
 import time
 from typing import Dict, List, Any, Optional
-from datetime import datetime
 from urllib.parse import urljoin, urlparse
 from pathlib import Path
 import urllib.request
 import urllib.error
 
-# Import schema for type hints
+# Defensive imports for standalone use
+try:
+    from ..processors.timestamp_utils import utc_now_iso
+except ImportError:
+    from datetime import datetime, timezone
+    def utc_now_iso() -> str:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
 try:
     from ..schema import ZathrasDocument
 except ImportError:
@@ -343,7 +349,7 @@ class OpenSearchExporter:
 
         # Add export metadata
         document['_export_metadata'] = {
-            'exported_at': datetime.utcnow().isoformat() + 'Z',
+            'exported_at': utc_now_iso(),
             'exporter': 'zathras-opensearch-exporter',
             'exporter_version': '1.0.0'
         }
@@ -387,7 +393,7 @@ class OpenSearchExporter:
         for doc in documents:
             # Add export metadata
             doc['_export_metadata'] = {
-                'exported_at': datetime.utcnow().isoformat() + 'Z',
+                'exported_at': utc_now_iso(),
                 'exporter': 'zathras-opensearch-exporter',
                 'exporter_version': '0.1.0'
             }
@@ -480,7 +486,7 @@ class OpenSearchExporter:
         """
         # Add export metadata
         document['_export_metadata'] = {
-            'exported_at': datetime.utcnow().isoformat() + 'Z',
+            'exported_at': utc_now_iso(),
             'exporter': 'zathras-opensearch-exporter',
             'exporter_version': '1.0.0'
         }

@@ -6,10 +6,20 @@ multiple benchmark processors to avoid duplication.
 """
 
 import re
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Callable, Optional, Dict, Any
 
 from .base_processor import ProcessorError
+
+
+def utc_now() -> datetime:
+    """Return current UTC time as a timezone-aware datetime."""
+    return datetime.now(timezone.utc)
+
+
+def utc_now_iso() -> str:
+    """Return current UTC time as an ISO 8601 string with Z suffix."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 # ISO 8601 pattern (e.g. 2026-02-10T14:41:49Z or with fractional seconds)
 ISO8601_PATTERN = re.compile(

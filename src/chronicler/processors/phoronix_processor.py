@@ -7,12 +7,12 @@ that runs multiple subtests covering CPU, memory, I/O, and system performance.
 
 import re
 from typing import Dict, Any
-from datetime import datetime
 from pathlib import Path
 import logging
 import statistics
 
 from .base_processor import BaseProcessor
+from .timestamp_utils import utc_now_iso
 from ..schema import Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key
 from ..utils.parser_utils import read_file_content
 
@@ -145,7 +145,7 @@ class PhoronixProcessor(BaseProcessor):
             # Create time series point for this subtest
             seq_key = create_sequence_key(sequence)
             run_data["timeseries"][seq_key] = {
-                "timestamp": datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ"),
+                "timestamp": utc_now_iso(),
                 "metrics": {
                     "test_name": test_name,
                     "bops": value
@@ -163,7 +163,7 @@ class PhoronixProcessor(BaseProcessor):
         if "timeseries" in run_data and run_data["timeseries"]:
             for seq_key, ts_data in run_data["timeseries"].items():
                 timeseries[seq_key] = TimeSeriesPoint(
-                    timestamp=ts_data.get("timestamp", datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")),
+                    timestamp=ts_data.get("timestamp", utc_now_iso()),
                     metrics=ts_data.get("metrics", {})
                 )
 

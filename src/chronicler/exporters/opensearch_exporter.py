@@ -21,9 +21,14 @@ from pathlib import Path
 import urllib.request
 import urllib.error
 
-from ..processors.timestamp_utils import utc_now_iso
+# Defensive imports for standalone use
+try:
+    from ..processors.timestamp_utils import utc_now_iso
+except ImportError:
+    from datetime import datetime, timezone
+    def utc_now_iso() -> str:
+        return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-# Import schema for type hints
 try:
     from ..schema import ZathrasDocument
 except ImportError:

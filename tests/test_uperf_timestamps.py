@@ -5,7 +5,7 @@ Uperf processor: timestamp validation (valid, missing, invalid, empty).
 from pathlib import Path
 
 from chronicler.processors.uperf_processor import UperfProcessor
-from chronicler.tests.conftest import run_processor_parse
+from conftest import run_processor_parse
 
 FILE_KEY = "results_uperf_csv"
 FILENAME = "results_uperf.csv"

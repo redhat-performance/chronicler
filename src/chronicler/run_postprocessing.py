@@ -48,8 +48,6 @@ from .exporters.timeseries_exporter import TimeSeriesExporter
 from .exporters.horreum_exporter import HorreumExporter
 
 
-# Configure logging at module level (will be moved to CLI entry point)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -532,9 +530,12 @@ Examples:
 
     args = parser.parse_args()
 
-    # Configure logging
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+    # Configure logging (only when run as CLI, not at import time)
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        force=True
+    )
 
     # Validate input
     if not args.input.exists():

@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "chronicler"
+dynamic = ["version"]
+description = "Benchmark results processing and export for Zathras test infrastructure"
+readme = "README.md"
+license = {text = "Apache-2.0"}
+requires-python = ">=3.9"
+authors = [
+    {name = "Red Hat Performance Engineering"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Testing",
+    "Topic :: System :: Benchmark",
+]
+keywords = ["benchmark", "performance", "testing", "opensearch", "zathras"]
+
+dependencies = [
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+opensearch = [
+    "opensearch-py>=2.0.0",
+]
+horreum = [
+    "requests>=2.28.0",
+]
+dev = [
+    "pytest>=7.0.0",
+]
+all = [
+    "chronicler[opensearch,horreum,dev]",
+]
+
+[project.scripts]
+chronicler = "chronicler.run_postprocessing:main"
+
+[project.urls]
+Homepage = "https://github.com/redhat-performance/chronicler"
+Documentation = "https://github.com/redhat-performance/chronicler#readme"
+Repository = "https://github.com/redhat-performance/chronicler.git"
+Issues = "https://github.com/redhat-performance/chronicler/issues"
+
+[tool.setuptools.dynamic]
+version = {attr = "chronicler.__version__"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

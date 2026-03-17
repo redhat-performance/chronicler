@@ -5,7 +5,7 @@ STREAMS processor: timestamp validation (valid, missing, invalid, empty).
 from pathlib import Path
 
 from chronicler.processors.streams_processor import StreamsProcessor
-from chronicler.tests.conftest import run_processor_parse
+from conftest import run_processor_parse
 
 FILE_KEY = "results_streams_csv"
 FILENAME = "results_streams.csv"

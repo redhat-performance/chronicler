@@ -1,9 +1,9 @@
 """
 Shared fixtures and helpers for chronicler processor tests.
 
-Run from the parent directory of chronicler (with venv activated):
-    cd /path/to  # Parent of chronicler directory
-    PYTHONPATH=. pytest chronicler/tests/ -v
+Run from the project root (with package installed):
+    pip install -e .
+    pytest tests/ -v
 """
 
 from pathlib import Path

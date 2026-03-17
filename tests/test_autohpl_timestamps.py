@@ -5,7 +5,7 @@ Auto HPL processor: timestamp validation (valid, missing, invalid, empty).
 from pathlib import Path
 
 from chronicler.processors.autohpl_processor import AutoHPLProcessor
-from chronicler.tests.conftest import run_processor_parse
+from conftest import run_processor_parse
 
 FILE_KEY = "results_csv"
 FILENAME = "results_auto_hpl.csv"

@@ -5,7 +5,7 @@ CoreMark processor: timestamp validation (valid, missing, invalid/empty in row).
 from pathlib import Path
 
 from chronicler.processors.coremark_processor import CoreMarkProcessor
-from chronicler.tests.conftest import run_processor_parse
+from conftest import run_processor_parse
 
 FILE_KEY = "results_csv"
 FILENAME = "results_coremark.csv"

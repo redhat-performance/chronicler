@@ -1,6 +1,8 @@
 import csv
 import io
+import operator
 import re
+from functools import reduce
 from typing import Dict, Any, Optional, List, Tuple
 from pathlib import Path
 import logging
@@ -268,9 +270,6 @@ class SpecCPU2017Processor(BaseProcessor):
                 "Expected format: Benchmarks,Base copies,Base Run Time,Base Rate,Start_Date,End_Date."
             )
 
-        from functools import reduce
-        import operator
-
         product = reduce(operator.mul, rates, 1)
         base_score = product ** (1.0 / len(rates)) if rates else None
 
@@ -393,8 +392,6 @@ class SpecCPU2017Processor(BaseProcessor):
 
             if suite_scores:
                 # Use geometric mean of suite scores as overall SPEC score
-                from functools import reduce
-                import operator
                 product = reduce(operator.mul, suite_scores, 1)
                 overall_score = product ** (1.0 / len(suite_scores))
 

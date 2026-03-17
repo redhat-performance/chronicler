@@ -2,9 +2,12 @@
 SPEC CPU 2017 processor: timestamp validation (valid, missing, invalid, empty).
 """
 
+import pytest
 from pathlib import Path
 
 from chronicler.processors.speccpu2017_processor import SpecCPU2017Processor
+
+pytestmark = pytest.mark.unit
 from conftest import run_processor_parse
 
 FILE_KEY = "results_csv"

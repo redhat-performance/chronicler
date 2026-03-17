@@ -2,9 +2,12 @@
 STREAMS processor: timestamp validation (valid, missing, invalid, empty).
 """
 
+import pytest
 from pathlib import Path
 
 from chronicler.processors.streams_processor import StreamsProcessor
+
+pytestmark = pytest.mark.unit
 from conftest import run_processor_parse
 
 FILE_KEY = "results_streams_csv"

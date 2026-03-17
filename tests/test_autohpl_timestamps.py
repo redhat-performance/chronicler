@@ -2,9 +2,12 @@
 Auto HPL processor: timestamp validation (valid, missing, invalid, empty).
 """
 
+import pytest
 from pathlib import Path
 
 from chronicler.processors.autohpl_processor import AutoHPLProcessor
+
+pytestmark = pytest.mark.unit
 from conftest import run_processor_parse
 
 FILE_KEY = "results_csv"

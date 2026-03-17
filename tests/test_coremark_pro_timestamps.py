@@ -2,9 +2,12 @@
 CoreMark Pro processor: timestamp validation (valid, missing, invalid, empty).
 """
 
+import pytest
 from pathlib import Path
 
 from chronicler.processors.coremark_pro_processor import CoreMarkProProcessor
+
+pytestmark = pytest.mark.unit
 from conftest import run_processor_parse
 
 FILE_KEY = "results_csv"

@@ -11,12 +11,15 @@ Provides common functionality for:
 Each test-specific processor only needs to implement parse_runs()
 """
 
+import json
+import logging
+import statistics
+import tarfile
 import yaml
 from abc import ABC, abstractmethod
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Any, Optional
-from datetime import datetime, timezone
-import logging
 
 from ..schema import (
     ZathrasDocument,
@@ -153,8 +156,8 @@ class BaseProcessor(ABC):
             return document
 
         except Exception as e:
-            logger.error(f"Failed to process results: {str(e)}")
-            raise ProcessorError(f"Processing failed: {str(e)}") from e
+            logger.error(f"Failed to process results ({type(e).__name__}): {e}")
+            raise ProcessorError(f"Processing failed: {e}") from e
         finally:
             # Cleanup temp files
             self.archive_handler.cleanup()
@@ -200,7 +203,6 @@ class BaseProcessor(ABC):
 
         if test_info_file.exists():
             try:
-                import json
                 with open(test_info_file, 'r') as f:
                     test_info_data = json.load(f)
 
@@ -209,8 +211,8 @@ class BaseProcessor(ABC):
                     if test_data.get('test_name') == test_name:
                         version = test_data.get('repo_file', '').replace('.tar.gz', '')
                         break
-            except Exception as e:
-                logger.warning(f"Failed to parse test_info: {str(e)}")
+            except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
+                logger.warning(f"Failed to parse test_info: {e}")
 
         return TestInfo(
             name=test_name,
@@ -267,8 +269,8 @@ class BaseProcessor(ABC):
                 configuration=config_info
             )
 
-        except Exception as e:
-            logger.error(f"Failed to extract SUT metadata: {str(e)}")
+        except (OSError, tarfile.TarError, KeyError, TypeError) as e:
+            logger.error(f"Failed to extract SUT metadata: {e}")
             return SystemUnderTest(
                 hardware=HardwareInfo(),
                 operating_system=OperatingSystemInfo(),
@@ -297,8 +299,8 @@ class BaseProcessor(ABC):
                 parameters=config_info
             )
 
-        except Exception as e:
-            logger.error(f"Failed to parse ansible_vars.yml: {str(e)}")
+        except (OSError, yaml.YAMLError, KeyError, TypeError) as e:
+            logger.error(f"Failed to parse ansible_vars.yml: {e}")
             return TestConfiguration()
 
     def build_results(self) -> Results:
@@ -379,8 +381,6 @@ class BaseProcessor(ABC):
 
         if not values:
             return None
-
-        import statistics
 
         return StatisticalSummary(
             mean=statistics.mean(values),

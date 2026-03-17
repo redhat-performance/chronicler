@@ -98,9 +98,9 @@ exporter = OpenSearchExporter(
 
 # Test connection
 if exporter.test_connection():
-    print("✅ Connected to OpenSearch!")
+    print("Connected to OpenSearch!")
 else:
-    print("❌ Connection failed")
+    print("Connection failed")
 ```
 
 ## Index Template
@@ -210,7 +210,7 @@ GET /zathras-results/_search
 
 ## Security
 
-⚠️ **Important:**
+**Important:**
 - Never commit `export_config.yml` with real credentials
 - Use environment variables for sensitive data
 - Rotate tokens regularly

@@ -37,7 +37,7 @@ from ..schema import (
     StatisticalSummary,
     RuntimeInfo
 )
-from ..utils.archive_handler import ArchiveHandler
+from ..utils.archive_handler import ArchiveHandler, ArchiveExtractionError
 from ..utils.metadata_extractor import MetadataExtractor
 from ..utils.parser_utils import (
     parse_command_file,
@@ -269,7 +269,7 @@ class BaseProcessor(ABC):
                 configuration=config_info
             )
 
-        except (OSError, tarfile.TarError, KeyError, TypeError) as e:
+        except (ArchiveExtractionError, OSError, tarfile.TarError, KeyError, TypeError) as e:
             logger.error(f"Failed to extract SUT metadata: {e}")
             return SystemUnderTest(
                 hardware=HardwareInfo(),

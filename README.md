@@ -103,12 +103,23 @@ source .venv/bin/activate   # On Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-**Running tests** (from the parent directory of chronicler, with venv activated). The suite includes unit/integration tests for processor timestamp validation (valid, missing, invalid, or empty timestamps in CSV/YML):
+**Running tests** (with venv activated):
 
 ```bash
-cd /path/to  # Parent directory containing the chronicler folder
-PYTHONPATH=. pytest chronicler/tests/ -v
+cd /path/to/chronicler
+pip install -e ".[dev]"  # Install package with test dependencies
+pytest tests/ -v         # Run all 197 tests
+
+# Run by category
+pytest -m unit           # Fast unit tests only (146 tests)
+pytest -m integration    # Integration tests with file I/O (20 tests)
 ```
+
+The test suite covers:
+- **Schema**: dataclass serialization, validation, content hashing
+- **Utilities**: timestamp validation, parsing, run helpers
+- **Archive handling**: zip/tar extraction
+- **Processors**: timestamp validation, run parsing, metric extraction
 
 **Dependencies:**
 - `pyyaml` - Configuration and result parsing

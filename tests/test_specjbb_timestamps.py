@@ -2,9 +2,12 @@
 SpecJBB processor: timestamp validation (valid, missing, invalid, empty).
 """
 
+import pytest
 from pathlib import Path
 
 from chronicler.processors.specjbb_processor import SpecJBBProcessor
+
+pytestmark = pytest.mark.unit
 from conftest import run_processor_parse
 
 FILE_KEY = "results_specjbb_csv"

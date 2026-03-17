@@ -2,9 +2,12 @@
 Passmark processor: timestamp validation (valid, missing, invalid, malformed).
 """
 
+import pytest
 from pathlib import Path
 
 from chronicler.processors.passmark_processor import PassmarkProcessor
+
+pytestmark = pytest.mark.unit
 from conftest import run_processor_parse
 
 FILE_KEY = "results_yml"

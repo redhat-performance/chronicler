@@ -400,7 +400,7 @@ def _clean_key_name(key: str) -> str:
 
     Examples:
         "CoreMark Size" -> "coremark_size"
-        "Total time (secs)" -> "total_time_secs"
+        "Total time (secs)" -> "total_time"  (parentheses content removed)
         "Iterations/Sec" -> "iterations_per_sec"
     """
     # Remove parentheses content

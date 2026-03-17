@@ -1,13 +1,11 @@
 """
 Uperf processor: timestamp validation (valid, missing, invalid, empty).
-
-Converted from post_processing/demos/demo_uperf_timestamps.py.
 """
 
 from pathlib import Path
 
-from post_processing.processors.uperf_processor import UperfProcessor
-from tests.post_processing.conftest import run_processor_parse
+from chronicler.processors.uperf_processor import UperfProcessor
+from chronicler.tests.conftest import run_processor_parse
 
 FILE_KEY = "results_uperf_csv"
 FILENAME = "results_uperf.csv"

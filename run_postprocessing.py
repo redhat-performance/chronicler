@@ -7,16 +7,16 @@ to OpenSearch. Horreum export is available as a stub (--horreum) for future use.
 
 Usage:
     # Process all benchmarks in a directory and export to OpenSearch
-    python -m post_processing.run_postprocessing --input /path/to/results --opensearch
+    python -m chronicler.run_postprocessing --input /path/to/results --opensearch
 
     # Horreum export is not implemented; --horreum is a stub for future use
-    python -m post_processing.run_postprocessing --input /path/to/results --opensearch --horreum
+    python -m chronicler.run_postprocessing --input /path/to/results --opensearch --horreum
 
     # Just create JSON files (no export)
-    python -m post_processing.run_postprocessing --input /path/to/results --output-json results/
+    python -m chronicler.run_postprocessing --input /path/to/results --output-json results/
 
-    # Use custom config
-    python -m post_processing.run_postprocessing --input /path/to/results --config post_processing/config/export_config.yml
+    # Use custom config (run from parent directory)
+    python -m chronicler.run_postprocessing --input /path/to/results --config chronicler/config/export_config.yml
 """
 
 import argparse

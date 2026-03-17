@@ -482,10 +482,10 @@ Metrics are organized hierarchically:
 
 ### Step 1: Create Processor File
 
-Create a new file in `post_processing/processors/`:
+Create a new file in `chronicler/processors/`:
 
 ```python
-# post_processing/processors/mybenchmark_processor.py
+# chronicler/processors/mybenchmark_processor.py
 
 from typing import Dict, Any
 from pathlib import Path
@@ -576,7 +576,7 @@ class MyBenchmarkProcessor(BaseProcessor):
 Add to `PROCESSOR_REGISTRY` in `run_postprocessing.py`:
 
 ```python
-from .processors.mybenchmark_processor import MyBenchmarkProcessor
+from chronicler.processors.mybenchmark_processor import MyBenchmarkProcessor
 
 PROCESSOR_REGISTRY = {
     'coremark': CoreMarkProcessor,
@@ -590,12 +590,12 @@ PROCESSOR_REGISTRY = {
 
 ```bash
 # Test JSON generation
-python3 -m post_processing.run_postprocessing \
+python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
     --output-json /tmp/test_json/
 
 # Test OpenSearch export
-python3 -m post_processing.run_postprocessing \
+python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
     --config export_config.yml \
     --opensearch
@@ -816,7 +816,7 @@ from ..schema import (
 
 1. **Output JSON**: Use `--output-json` to inspect generated documents
    ```bash
-   python3 -m post_processing.run_postprocessing \
+   python3 -m chronicler.run_postprocessing \
        --input /path/to/results \
        --output-json /tmp/debug_json/
    ```
@@ -851,27 +851,27 @@ from ..schema import (
 4. **Test deduplication**: Run processing twice and verify duplicates are skipped
    ```bash
    # First run
-   python3 -m post_processing.run_postprocessing ... --opensearch
+   python3 -m chronicler.run_postprocessing ... --opensearch
    
    # Second run (should show all duplicates)
-   python3 -m post_processing.run_postprocessing ... --opensearch
+   python3 -m chronicler.run_postprocessing ... --opensearch
    ```
 
 ---
 
 ## Additional Resources
 
-- **Schema Documentation**: See `post_processing/schema.py` for data structure definitions
+- **Schema Documentation**: See `chronicler/schema.py` for data structure definitions
 - **Base Processor Source**: See `base_processor.py` for full implementation
 - **Example Processors**: Review existing processors for patterns
-- **Testing Guide**: See `post_processing/README.md` for testing instructions
+- **Testing Guide**: See `chronicler/README.md` for testing instructions
 
 ---
 
 ## Questions?
 
 For questions or issues, refer to:
-- Main README: `post_processing/README.md`
-- Schema documentation: `post_processing/schema.py`
-- Implementation TODO: `post_processing/IMPLEMENTATION_TODO.md`
+- Main README: `chronicler/README.md`
+- Schema documentation: `chronicler/schema.py`
+- Implementation TODO: `chronicler/IMPLEMENTATION_TODO.md`
 

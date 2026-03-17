@@ -1,13 +1,11 @@
 """
 Passmark processor: timestamp validation (valid, missing, invalid, malformed).
-
-Converted from post_processing/demos/demo_passmark_timestamps.py.
 """
 
 from pathlib import Path
 
-from post_processing.processors.passmark_processor import PassmarkProcessor
-from tests.post_processing.conftest import run_processor_parse
+from chronicler.processors.passmark_processor import PassmarkProcessor
+from chronicler.tests.conftest import run_processor_parse
 
 FILE_KEY = "results_yml"
 FILENAME = "results_all_1.yml"

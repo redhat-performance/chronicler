@@ -1,13 +1,11 @@
 """
 STREAMS processor: timestamp validation (valid, missing, invalid, empty).
-
-Converted from post_processing/demos/demo_streams_timestamps.py.
 """
 
 from pathlib import Path
 
-from post_processing.processors.streams_processor import StreamsProcessor
-from tests.post_processing.conftest import run_processor_parse
+from chronicler.processors.streams_processor import StreamsProcessor
+from chronicler.tests.conftest import run_processor_parse
 
 FILE_KEY = "results_streams_csv"
 FILENAME = "results_streams.csv"

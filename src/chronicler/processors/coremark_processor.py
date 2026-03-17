@@ -168,12 +168,14 @@ class CoreMarkProcessor(BaseProcessor):
 
         if summary:
             # Metrics
+            # Note: parse_key_value_text transforms "Iterations/Sec" -> "iterations_per_sec"
+            # and "Total time (secs)" -> "total_time" (parentheses stripped)
             if 'iterations_per_sec' in summary:
                 metrics['iterations_per_second'] = summary['iterations_per_sec']
             if 'iterations' in summary:
                 metrics['total_iterations'] = summary['iterations']
-            if 'total_time_secs' in summary:
-                metrics['total_time_seconds'] = summary['total_time_secs']
+            if 'total_time' in summary:
+                metrics['total_time_seconds'] = summary['total_time']
             if 'total_ticks' in summary:
                 metrics['total_ticks'] = summary['total_ticks']
             if 'coremark_size' in summary:
@@ -198,7 +200,7 @@ class CoreMarkProcessor(BaseProcessor):
             )
 
         # Calculate duration from summary
-        duration = summary.get('total_time_secs') if summary else None
+        duration = summary.get('total_time') if summary else None
 
         # Run-level timestamps: from CSV Start_Date/End_Date (required when time series present)
         has_real_timestamps = (

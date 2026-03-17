@@ -183,6 +183,32 @@ Compiler flags   : -O2 -pthread"""
         assert run.metrics["iterations_per_second"] == 195999.821818
         assert run.configuration["compiler"] == "GCC 11.4.0"
 
+    def test_parses_total_time_seconds(self, tmp_path):
+        """Extracts total_time_seconds from 'Total time (secs)' summary line."""
+        csv = """iteration,threads,IterationsPerSec,Start_Date,End_Date
+1,4,195000,2026-03-17T10:00:00Z,2026-03-17T10:00:30Z"""
+        csv_path = tmp_path / "results_coremark.csv"
+        csv_path.write_text(csv.strip())
+
+        summary = """Total time (secs): 22.675000
+Iterations/Sec   : 195999.821818"""
+        summary_path = tmp_path / "run1_summary"
+        summary_path.write_text(summary.strip())
+
+        processor = CoreMarkProcessor(str(tmp_path))
+        runs = processor.parse_runs({
+            "files": {
+                "results_csv": str(csv_path),
+                "run_summaries": [str(summary_path)],
+                "version": None,
+                "tuned_setting": None,
+            }
+        })
+
+        run = runs["run_1"]
+        assert run.metrics["total_time_seconds"] == 22.675
+        assert run.duration_seconds == 22.675
+
 
 class TestProcessorErrorHandling:
     """Tests for processor error handling."""

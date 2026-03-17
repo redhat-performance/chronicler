@@ -14,6 +14,7 @@ malformed timestamps raise ProcessorError.
 import json
 import re
 import statistics
+import traceback
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from pathlib import Path
@@ -193,7 +194,6 @@ class PyPerfProcessor(BaseProcessor):
 
         except Exception as e:
             logger.error(f"Failed to process PyPerf results: {e}")
-            import traceback
             logger.debug(traceback.format_exc())
             raise
 

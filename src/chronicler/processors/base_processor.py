@@ -13,6 +13,7 @@ Each test-specific processor only needs to implement parse_runs()
 
 import json
 import logging
+import re
 import statistics
 import tarfile
 import yaml
@@ -460,8 +461,6 @@ class BaseProcessor(ABC):
 
         Returns ISO 8601 formatted timestamp or None if not found
         """
-        import re
-
         test_name = self.get_test_name()
 
         # Check extracted data for timestamp in directory names
@@ -509,8 +508,6 @@ class BaseProcessor(ABC):
 
         Returns dict with: os_vendor, cloud_provider, instance_type, iteration, scenario_name
         """
-        import re
-
         result = {
             "os_vendor": None,
             "cloud_provider": None,

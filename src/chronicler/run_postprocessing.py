@@ -20,8 +20,9 @@ Usage:
 """
 
 import argparse
-import sys
 import logging
+import sys
+import traceback
 import yaml
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional, Any
@@ -486,7 +487,6 @@ def process_result_directory(
 
         except Exception as e:
             logger.error(f"  Failed to process {test_name}: {e}")
-            import traceback
             logger.debug(traceback.format_exc())
             stats.record_failure(test_name, str(e))
             results.append({

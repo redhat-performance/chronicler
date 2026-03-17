@@ -181,7 +181,7 @@ class BaseProcessor(ABC):
             document_type="zathras_test_result",
             zathras_version="1.0",
             test_timestamp=test_timestamp_str,
-            processing_timestamp=processing_time.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z",
+            processing_timestamp=processing_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
             collection_timestamp=test_timestamp_str,  # Backward compatibility
             os_vendor=source_metadata.get("os_vendor"),
             cloud_provider=source_metadata.get("cloud_provider"),

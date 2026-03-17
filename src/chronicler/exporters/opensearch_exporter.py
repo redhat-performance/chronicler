@@ -12,6 +12,7 @@ Updated for object-based schema with:
 - Named metrics objects
 """
 
+import base64
 import json
 import logging
 import ssl
@@ -101,7 +102,6 @@ class OpenSearchExporter:
             headers['Authorization'] = f'Bearer {self.auth_token}'
         elif self.username and self.password:
             # Basic auth
-            import base64
             credentials = f"{self.username}:{self.password}"
             encoded = base64.b64encode(credentials.encode('utf-8')).decode('ascii')
             headers['Authorization'] = f'Basic {encoded}'

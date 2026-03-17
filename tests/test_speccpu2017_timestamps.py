@@ -5,7 +5,7 @@ SPEC CPU 2017 processor: timestamp validation (valid, missing, invalid, empty).
 from pathlib import Path
 
 from chronicler.processors.speccpu2017_processor import SpecCPU2017Processor
-from tests.chronicler.conftest import run_processor_parse
+from chronicler.tests.conftest import run_processor_parse
 
 FILE_KEY = "results_csv"
 FILENAME = "demo_intrate_timestamps.csv"

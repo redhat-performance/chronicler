@@ -119,10 +119,14 @@ class ArchiveHandler:
                 "files": files
             }
 
-        except Exception as e:
+        except ArchiveExtractionError:
             if self.cleanup_on_error:
                 self.cleanup()
-            raise ArchiveExtractionError(f"Failed to extract {zip_path}: {str(e)}") from e
+            raise
+        except (OSError, zipfile.BadZipFile, tarfile.TarError) as e:
+            if self.cleanup_on_error:
+                self.cleanup()
+            raise ArchiveExtractionError(f"Failed to extract {zip_path}: {e}") from e
 
     def extract_sysconfig_archive(self, tar_path: str) -> Dict[str, Any]:
         """
@@ -187,10 +191,14 @@ class ArchiveHandler:
                 "files": files
             }
 
-        except Exception as e:
+        except ArchiveExtractionError:
             if self.cleanup_on_error:
                 self.cleanup()
-            raise ArchiveExtractionError(f"Failed to extract {tar_path}: {str(e)}") from e
+            raise
+        except (OSError, tarfile.TarError) as e:
+            if self.cleanup_on_error:
+                self.cleanup()
+            raise ArchiveExtractionError(f"Failed to extract {tar_path}: {e}") from e
 
     def extract_boot_info_archive(self, tar_path: str) -> Dict[str, Any]:
         """
@@ -231,10 +239,10 @@ class ArchiveHandler:
                 "files": files
             }
 
-        except Exception as e:
+        except (OSError, tarfile.TarError) as e:
             if self.cleanup_on_error:
                 self.cleanup()
-            raise ArchiveExtractionError(f"Failed to extract boot info: {str(e)}") from e
+            raise ArchiveExtractionError(f"Failed to extract boot info: {e}") from e
 
     def _catalog_result_files(self, result_dir: str, test_name: str) -> Dict[str, Any]:
         """Catalog all files in result directory"""

@@ -87,8 +87,8 @@ def parse_csv_timeseries(csv_path: str, delimiter: str = ':',
         logger.debug(f"Parsed {len(data)} rows from {csv_path}")
         return data
 
-    except Exception as e:
-        logger.error(f"Failed to parse CSV {csv_path}: {str(e)}")
+    except (OSError, csv.Error, UnicodeDecodeError) as e:
+        logger.error(f"Failed to parse CSV {csv_path}: {e}")
         return []
 
 
@@ -133,8 +133,8 @@ def parse_key_value_text(file_path: str, separator: str = ':') -> Dict[str, Any]
         logger.debug(f"Parsed {len(data)} key-value pairs from {file_path}")
         return data
 
-    except Exception as e:
-        logger.error(f"Failed to parse key-value file {file_path}: {str(e)}")
+    except (OSError, UnicodeDecodeError, ValueError) as e:
+        logger.error(f"Failed to parse key-value file {file_path}: {e}")
         return {}
 
 
@@ -181,8 +181,8 @@ def parse_proc_file(file_path: str) -> Dict[str, str]:
 
         return data
 
-    except Exception as e:
-        logger.error(f"Failed to parse proc file {file_path}: {str(e)}")
+    except (OSError, UnicodeDecodeError, ValueError) as e:
+        logger.error(f"Failed to parse proc file {file_path}: {e}")
         return {}
 
 
@@ -230,8 +230,8 @@ def parse_test_times(file_path: str) -> List[Dict[str, Any]]:
 
         return data
 
-    except Exception as e:
-        logger.error(f"Failed to parse test_times {file_path}: {str(e)}")
+    except (OSError, UnicodeDecodeError, ValueError) as e:
+        logger.error(f"Failed to parse test_times {file_path}: {e}")
         return []
 
 
@@ -278,8 +278,8 @@ def parse_command_file(file_path: str) -> Dict[str, Any]:
 
         return data
 
-    except Exception as e:
-        logger.error(f"Failed to parse command file {file_path}: {str(e)}")
+    except (OSError, UnicodeDecodeError) as e:
+        logger.error(f"Failed to parse command file {file_path}: {e}")
         return {}
 
 
@@ -319,8 +319,8 @@ def read_file_lines(file_path: str, strip: bool = True) -> List[str]:
             if strip:
                 lines = [line.strip() for line in lines]
             return lines
-    except Exception as e:
-        logger.error(f"Failed to read file {file_path}: {str(e)}")
+    except OSError as e:
+        logger.error(f"Failed to read file {file_path}: {e}")
         return []
 
 
@@ -340,8 +340,8 @@ def read_file_content(file_path: str) -> str:
     try:
         with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
             return f.read()
-    except Exception as e:
-        logger.error(f"Failed to read file {file_path}: {str(e)}")
+    except OSError as e:
+        logger.error(f"Failed to read file {file_path}: {e}")
         return ""
 
 
@@ -480,8 +480,8 @@ def parse_meminfo(file_path: str) -> Dict[str, int]:
 
         return data
 
-    except Exception as e:
-        logger.error(f"Failed to parse meminfo {file_path}: {str(e)}")
+    except (OSError, UnicodeDecodeError, ValueError) as e:
+        logger.error(f"Failed to parse meminfo {file_path}: {e}")
         return {}
 
 

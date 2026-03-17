@@ -14,12 +14,13 @@ Updated for object-based schema with:
 
 import json
 import logging
+import ssl
 import time
+import urllib.error
+import urllib.request
+from pathlib import Path
 from typing import Dict, List, Any, Optional
 from urllib.parse import urljoin, urlparse
-from pathlib import Path
-import urllib.request
-import urllib.error
 
 # Defensive imports for standalone use
 try:
@@ -154,7 +155,6 @@ class OpenSearchExporter:
                 )
 
                 # Create SSL context if needed
-                import ssl
                 context = None
                 if not self.verify_ssl and url.startswith('https'):
                     context = ssl._create_unverified_context()
@@ -195,8 +195,8 @@ class OpenSearchExporter:
                 else:
                     raise Exception(f"Connection failed after {self.max_retries} attempts: {e.reason}")
 
-            except Exception as e:
-                self.logger.error(f"Unexpected error on attempt {attempt + 1}/{self.max_retries}: {str(e)}")
+            except (json.JSONDecodeError, OSError, TypeError) as e:
+                self.logger.error(f"Unexpected error on attempt {attempt + 1}/{self.max_retries}: {e}")
                 if attempt < self.max_retries - 1:
                     time.sleep(self.retry_delay)
                 else:

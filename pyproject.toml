@@ -64,3 +64,8 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src", "tests"]
+markers = [
+    "unit: fast unit tests with no I/O (deselect with '-m \"not unit\"')",
+    "integration: tests with real file I/O or archives (deselect with '-m \"not integration\"')",
+    "slow: tests that take longer to run",
+]

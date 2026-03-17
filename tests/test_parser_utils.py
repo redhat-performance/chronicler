@@ -7,6 +7,8 @@ Tests parsing functions for various file formats.
 import pytest
 from pathlib import Path
 
+pytestmark = pytest.mark.unit
+
 from chronicler.utils.parser_utils import (
     parse_csv_timeseries,
     parse_key_value_text,

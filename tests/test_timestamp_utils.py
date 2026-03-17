@@ -7,6 +7,8 @@ Tests ISO 8601 validation and timestamp interpolation.
 import pytest
 from datetime import datetime, timezone
 
+pytestmark = pytest.mark.unit
+
 from chronicler.processors.timestamp_utils import (
     utc_now,
     utc_now_iso,

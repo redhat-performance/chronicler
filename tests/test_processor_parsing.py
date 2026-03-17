@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 from chronicler.processors.coremark_processor import CoreMarkProcessor
 from chronicler.processors.base_processor import ProcessorError
 from chronicler.schema import Run, TimeSeriesPoint

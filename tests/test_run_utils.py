@@ -6,6 +6,8 @@ Tests helpers for building Run timeseries and TimeSeriesSummary.
 
 import pytest
 
+pytestmark = pytest.mark.unit
+
 from chronicler.processors.run_utils import (
     run_data_timeseries_to_objects,
     timeseries_summary_from_metric,

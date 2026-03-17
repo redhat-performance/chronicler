@@ -8,6 +8,8 @@ and timeseries extraction.
 import json
 import pytest
 
+pytestmark = pytest.mark.unit
+
 from chronicler.schema import (
     Metadata,
     TestInfo,

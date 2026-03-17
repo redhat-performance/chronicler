@@ -11,6 +11,8 @@ import zipfile
 import pytest
 from pathlib import Path
 
+pytestmark = pytest.mark.integration
+
 from chronicler.utils.archive_handler import (
     ArchiveHandler,
     ArchiveExtractionError,

@@ -119,6 +119,10 @@ class ArchiveHandler:
                 "files": files
             }
 
+        except ArchiveExtractionError:
+            if self.cleanup_on_error:
+                self.cleanup()
+            raise
         except (OSError, zipfile.BadZipFile, tarfile.TarError) as e:
             if self.cleanup_on_error:
                 self.cleanup()
@@ -187,6 +191,10 @@ class ArchiveHandler:
                 "files": files
             }
 
+        except ArchiveExtractionError:
+            if self.cleanup_on_error:
+                self.cleanup()
+            raise
         except (OSError, tarfile.TarError) as e:
             if self.cleanup_on_error:
                 self.cleanup()

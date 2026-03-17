@@ -15,7 +15,7 @@ import yaml
 from abc import ABC, abstractmethod
 from pathlib import Path
 from typing import Dict, Any, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 from ..schema import (
@@ -163,7 +163,7 @@ class BaseProcessor(ABC):
         """Build metadata section"""
         test_name = self.get_test_name()
         system_name = self.result_dir.name
-        processing_time = datetime.utcnow()
+        processing_time = datetime.now(timezone.utc)
 
         # Try to extract actual test execution timestamp
         test_timestamp_str = self._extract_test_timestamp()

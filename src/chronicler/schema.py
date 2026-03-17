@@ -13,7 +13,7 @@ Key Design Decisions:
 
 from dataclasses import dataclass, field, asdict
 from typing import Dict, Any, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 import json
 import hashlib
 import copy
@@ -30,7 +30,7 @@ class Metadata:
     test_timestamp: Optional[str] = None  # When the test was actually executed
     # When JSON was created
     processing_timestamp: str = field(
-        default_factory=lambda: datetime.utcnow().isoformat() + "Z"
+        default_factory=lambda: datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     )
 
     # Deprecated (kept for backward compatibility, use test_timestamp instead)

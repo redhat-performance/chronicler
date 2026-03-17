@@ -1,13 +1,11 @@
 """
 SPEC CPU 2017 processor: timestamp validation (valid, missing, invalid, empty).
-
-Converted from post_processing/demos/demo_speccpu_timestamps.py.
 """
 
 from pathlib import Path
 
-from post_processing.processors.speccpu2017_processor import SpecCPU2017Processor
-from tests.post_processing.conftest import run_processor_parse
+from chronicler.processors.speccpu2017_processor import SpecCPU2017Processor
+from tests.chronicler.conftest import run_processor_parse
 
 FILE_KEY = "results_csv"
 FILENAME = "demo_intrate_timestamps.csv"

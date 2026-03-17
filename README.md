@@ -1,4 +1,4 @@
-# Zathras Post-Processing
+# Chronicler
 
 Export Zathras benchmark results to OpenSearch for centralized analysis, dashboards, and performance tracking. Horreum export is available as a stub (not implemented) for future use.
 
@@ -10,17 +10,17 @@ Process entire result directories automatically:
 
 ```bash
 # 1. Configure credentials
-cp post_processing/config/export_config_example.yml post_processing/config/export_config.yml
-vim post_processing/config/export_config.yml  # Add your credentials
+cp chronicler/config/export_config_example.yml chronicler/config/export_config.yml
+vim chronicler/config/export_config.yml  # Add your credentials
 
 # 2. Process and export everything
-python3 -m post_processing.run_postprocessing \
+python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
-    --config post_processing/config/export_config.yml \
+    --config chronicler/config/export_config.yml \
     --opensearch
 
 # Or just generate JSON files
-python3 -m post_processing.run_postprocessing \
+python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
     --output-json /tmp/json_output
 ```
@@ -97,16 +97,17 @@ Tests Processed:
 Use a project virtual environment; do not install into the system Python.
 
 ```bash
-cd /path/to/zathras
+cd /path/to/chronicler
 python3 -m venv .venv
 source .venv/bin/activate   # On Windows: .venv\Scripts\activate
-pip install -r post_processing/requirements.txt
+pip install -r requirements.txt
 ```
 
-**Running tests** (from repo root with venv activated). The suite includes unit/integration tests for processor timestamp validation (valid, missing, invalid, or empty timestamps in CSV/YML):
+**Running tests** (from the parent directory of chronicler, with venv activated). The suite includes unit/integration tests for processor timestamp validation (valid, missing, invalid, or empty timestamps in CSV/YML):
 
 ```bash
-PYTHONPATH=. pytest tests/ -v
+cd /path/to  # Parent directory containing the chronicler folder
+PYTHONPATH=. pytest chronicler/tests/ -v
 ```
 
 **Dependencies:**
@@ -120,10 +121,10 @@ Create your configuration file:
 
 ```bash
 # Copy example
-cp post_processing/config/export_config_example.yml post_processing/config/export_config.yml
+cp config/export_config_example.yml config/export_config.yml
 
 # Edit with your settings
-vim post_processing/config/export_config.yml
+vim config/export_config.yml
 ```
 
 Example config:
@@ -161,11 +162,11 @@ Modify the `burden` script to automatically export results after test completion
 # Add to burden script after test execution completes
 # Around line where results are finalized (e.g., after archiving)
 
-if [ -f "post_processing/config/export_config.yml" ]; then
+if [ -f "config/export_config.yml" ]; then
     echo "Exporting results to OpenSearch..."
-    python3 -m post_processing.run_postprocessing \
+    python3 -m chronicler.run_postprocessing \
         --input "${RESULT_DIR}" \
-        --config post_processing/config/export_config.yml \
+        --config config/export_config.yml \
         --opensearch || {
         echo "WARNING: Post-processing export failed, but continuing..."
     }
@@ -189,8 +190,8 @@ fi
 **One-time setup:**
 ```bash
 # Create config file (once per system/CI environment)
-cp post_processing/config/export_config_example.yml post_processing/config/export_config.yml
-vim post_processing/config/export_config.yml  # Add your credentials
+cp config/export_config_example.yml config/export_config.yml
+vim config/export_config.yml  # Add your credentials
 ```
 
 ---
@@ -312,18 +313,18 @@ Zathras uses **two OpenSearch indices** to handle high-volume time series data:
 
 ```bash
 # Automatically handles both indices
-python3 -m post_processing.run_postprocessing \
+python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
-    --config post_processing/config/export_config.yml \
+    --config config/export_config.yml \
     --opensearch
 ```
 
 ### Horreum (stub)
 
-Horreum export is not implemented. The `HorreumExporter` class is a stub: it accepts the same constructor and method calls for compatibility, but `export_zathras_document` (and other methods) raise `NotImplementedError`. Implement `post_processing/exporters/horreum_exporter.py` to enable Horreum.
+Horreum export is not implemented. The `HorreumExporter` class is a stub: it accepts the same constructor and method calls for compatibility, but `export_zathras_document` (and other methods) raise `NotImplementedError`. Implement `chronicler/exporters/horreum_exporter.py` to enable Horreum.
 
 ```python
-from post_processing.exporters.horreum_exporter import HorreumExporter
+from chronicler.exporters.horreum_exporter import HorreumExporter
 
 # Stub accepts url, username, password (and **kwargs for future use)
 exporter = HorreumExporter(
@@ -362,10 +363,10 @@ The hash **excludes** `processing_timestamp`, ensuring identical test results al
 **Prevents Duplicates:**
 ```bash
 # Process results
-python3 -m post_processing.run_postprocessing --input results/ --opensearch
+python3 -m chronicler.run_postprocessing --input results/ --opensearch
 
 # Reprocess same results (e.g., after fixing a bug)
-python3 -m post_processing.run_postprocessing --input results/ --opensearch
+python3 -m chronicler.run_postprocessing --input results/ --opensearch
 
 # Result: Same document updated in OpenSearch, no duplicate created
 ```

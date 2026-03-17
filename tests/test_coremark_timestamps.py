@@ -1,13 +1,11 @@
 """
 CoreMark processor: timestamp validation (valid, missing, invalid/empty in row).
-
-Converted from post_processing/demos/demo_coremark_timestamps.py.
 """
 
 from pathlib import Path
 
-from post_processing.processors.coremark_processor import CoreMarkProcessor
-from tests.post_processing.conftest import run_processor_parse
+from chronicler.processors.coremark_processor import CoreMarkProcessor
+from tests.chronicler.conftest import run_processor_parse
 
 FILE_KEY = "results_csv"
 FILENAME = "results_coremark.csv"

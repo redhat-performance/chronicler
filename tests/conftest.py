@@ -1,7 +1,9 @@
 """
-Shared fixtures and helpers for post_processing processor tests.
+Shared fixtures and helpers for chronicler processor tests.
 
-Run from repo root (with project venv activated): PYTHONPATH=. pytest tests/ -v
+Run from the parent directory of chronicler (with venv activated):
+    cd /path/to  # Parent of chronicler directory
+    PYTHONPATH=. pytest chronicler/tests/ -v
 """
 
 from pathlib import Path
@@ -9,7 +11,7 @@ from typing import Optional
 
 import pytest
 
-from post_processing.processors.base_processor import ProcessorError
+from chronicler.processors.base_processor import ProcessorError
 
 
 @pytest.fixture

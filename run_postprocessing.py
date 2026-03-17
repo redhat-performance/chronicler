@@ -15,8 +15,8 @@ Usage:
     # Just create JSON files (no export)
     python -m chronicler.run_postprocessing --input /path/to/results --output-json results/
 
-    # Use custom config
-    python -m chronicler.run_postprocessing --input /path/to/results --config config/export_config.yml
+    # Use custom config (run from parent directory)
+    python -m chronicler.run_postprocessing --input /path/to/results --config chronicler/config/export_config.yml
 """
 
 import argparse

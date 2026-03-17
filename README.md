@@ -121,10 +121,10 @@ Create your configuration file:
 
 ```bash
 # Copy example
-cp config/export_config_example.yml config/export_config.yml
+cp chronicler/config/export_config_example.yml chronicler/config/export_config.yml
 
 # Edit with your settings
-vim config/export_config.yml
+vim chronicler/config/export_config.yml
 ```
 
 Example config:
@@ -162,11 +162,11 @@ Modify the `burden` script to automatically export results after test completion
 # Add to burden script after test execution completes
 # Around line where results are finalized (e.g., after archiving)
 
-if [ -f "config/export_config.yml" ]; then
+if [ -f "chronicler/config/export_config.yml" ]; then
     echo "Exporting results to OpenSearch..."
     python3 -m chronicler.run_postprocessing \
         --input "${RESULT_DIR}" \
-        --config config/export_config.yml \
+        --config chronicler/config/export_config.yml \
         --opensearch || {
         echo "WARNING: Post-processing export failed, but continuing..."
     }
@@ -190,8 +190,8 @@ fi
 **One-time setup:**
 ```bash
 # Create config file (once per system/CI environment)
-cp config/export_config_example.yml config/export_config.yml
-vim config/export_config.yml  # Add your credentials
+cp chronicler/config/export_config_example.yml chronicler/config/export_config.yml
+vim chronicler/config/export_config.yml  # Add your credentials
 ```
 
 ---
@@ -315,7 +315,7 @@ Zathras uses **two OpenSearch indices** to handle high-volume time series data:
 # Automatically handles both indices
 python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
-    --config config/export_config.yml \
+    --config chronicler/config/export_config.yml \
     --opensearch
 ```
 

@@ -48,39 +48,6 @@ from .exporters.timeseries_exporter import TimeSeriesExporter
 from .exporters.horreum_exporter import HorreumExporter
 
 
-# Color codes for terminal output
-class ColoredFormatter(logging.Formatter):
-    """Custom formatter that adds colors to log levels"""
-
-    # ANSI color codes
-    COLORS = {
-        'WARNING': '\033[93m',  # Yellow
-        'ERROR': '\033[91m',    # Red
-        'RESET': '\033[0m'      # Reset
-    }
-
-    def format(self, record):
-        # Save the original levelname
-        levelname = record.levelname
-
-        # Add color to WARNING and ERROR levels
-        if levelname in self.COLORS:
-            record.levelname = f"{self.COLORS[levelname]}{levelname}{self.COLORS['RESET']}"
-
-        # Format the message
-        result = super().format(record)
-
-        # Restore original levelname
-        record.levelname = levelname
-
-        return result
-
-
-# Configure logging with colors
-handler = logging.StreamHandler()
-handler.setFormatter(ColoredFormatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s'))
-logging.root.addHandler(handler)
-logging.root.setLevel(logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -563,9 +530,12 @@ Examples:
 
     args = parser.parse_args()
 
-    # Configure logging
-    if args.verbose:
-        logging.getLogger().setLevel(logging.DEBUG)
+    # Configure logging (only when run as CLI, not at import time)
+    logging.basicConfig(
+        level=logging.DEBUG if args.verbose else logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        force=True
+    )
 
     # Validate input
     if not args.input.exists():

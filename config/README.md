@@ -42,16 +42,18 @@ curl -k -X PUT "https://opensearch.example.com/_index_template/zathras-timeserie
 ### `export_config_example.yml`
 Example configuration for OpenSearch (Horreum section is supported as a stub). Uses `summary_index` and `timeseries_index` (and optional `username`/`password` or `auth_token`).
 
-**Setup:**
-```bash
-# Copy example to actual config
-cp config/export_config_example.yml config/export_config.yml
+The CLI ships a copy under the Python package as **`chronicler/config/export_config_example.yml`** (wheel/sdist). Prefer copying to **`chronicler/config/export_config.yml`** next to that file so discovery works without `--config`. This repo’s top-level **`config/export_config_example.yml`** is the same template for reference; **`config/export_config.yml`** is still discovered if present when the process cwd is the repository root.
 
-# Edit with your credentials
-vim config/export_config.yml
+**Setup (recommended — next to installed package):**
+```bash
+PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
+cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
+vim "$PKG_CONFIG/export_config.yml"
 ```
 
-**Important:** `export_config.yml` is in `.gitignore` to prevent committing credentials.
+**Or** set `CHRONICLER_CONFIG` to the YAML path, or use `./config/export_config.yml` from the current working directory (see main README discovery order).
+
+**Important:** Real credentials live in `export_config.yml` (gitignored paths); never commit them.
 
 ## OpenSearch Connection
 

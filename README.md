@@ -9,14 +9,14 @@ Export Zathras benchmark results to OpenSearch for centralized analysis, dashboa
 Process entire result directories automatically:
 
 ```bash
-# 1. Configure credentials
-cp chronicler/config/export_config_example.yml chronicler/config/export_config.yml
-vim chronicler/config/export_config.yml  # Add your credentials
+# 1. Configure credentials (next to the installed chronicler package)
+PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
+cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
+vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
 
-# 2. Process and export everything
+# 2. Process and export (config is discovered automatically; see below)
 python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
-    --config chronicler/config/export_config.yml \
     --opensearch
 
 # Or just generate JSON files
@@ -128,15 +128,23 @@ The test suite covers:
 
 ### Configuration
 
-Create your configuration file:
+Create your configuration file next to the Chronicler Python package (so it is found without passing `--config`):
 
 ```bash
-# Copy example
-cp chronicler/config/export_config_example.yml chronicler/config/export_config.yml
-
-# Edit with your settings
-vim chronicler/config/export_config.yml
+PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
+cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
+vim "$PKG_CONFIG/export_config.yml"
 ```
+
+**Discovery order** (when `--config` is omitted):
+
+1. **`CHRONICLER_CONFIG`** — absolute or relative path to a YAML file (recommended for CI/orchestrators).
+2. **Package path** — `<chronicler>/config/export_config.yml` (same directory as `export_config_example.yml` in the install).
+3. **Current working directory**, first match: `./export_config.yml` → `./config/export_config.yml` → `./chronicler/config/export_config.yml`.
+
+If no file is found, the CLI logs a **warning** and runs with an empty config (OpenSearch code defaults only). Passing **`--config PATH`** always uses that path and overrides discovery. Each run logs which file is used (or that the explicit path is missing).
+
+Orchestrators (e.g. Zathras) can rely on **`CHRONICLER_CONFIG`** or on a pre-installed `export_config.yml` beside the package, avoiding a hard-coded path to the Chronicler source tree.
 
 Example config:
 ```yaml
@@ -173,16 +181,21 @@ Modify the `burden` script to automatically export results after test completion
 # Add to burden script after test execution completes
 # Around line where results are finalized (e.g., after archiving)
 
-if [ -f "chronicler/config/export_config.yml" ]; then
+# Optional: only invoke when a config is available (same rules as CLI discovery)
+_config_ready() {
+  [ -n "${CHRONICLER_CONFIG}" ] && [ -f "${CHRONICLER_CONFIG}" ] && return 0
+  python3 -c "from pathlib import Path; import chronicler, sys; p=Path(chronicler.__file__).resolve().parent/'config'/'export_config.yml'; sys.exit(0 if p.is_file() else 1)"
+}
+
+if _config_ready; then
     echo "Exporting results to OpenSearch..."
     python3 -m chronicler.run_postprocessing \
         --input "${RESULT_DIR}" \
-        --config chronicler/config/export_config.yml \
         --opensearch || {
         echo "WARNING: Post-processing export failed, but continuing..."
     }
 else
-    echo "INFO: No export config found, skipping post-processing export"
+    echo "INFO: No export config (CHRONICLER_CONFIG or package config/export_config.yml), skipping post-processing export"
 fi
 ```
 
@@ -200,9 +213,10 @@ fi
 
 **One-time setup:**
 ```bash
-# Create config file (once per system/CI environment)
-cp chronicler/config/export_config_example.yml chronicler/config/export_config.yml
-vim chronicler/config/export_config.yml  # Add your credentials
+PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
+cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
+vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
+# Or: export CHRONICLER_CONFIG=/secure/path/export_config.yml
 ```
 
 ---
@@ -323,11 +337,10 @@ Zathras uses **two OpenSearch indices** to handle high-volume time series data:
 **Why two indices?** Benchmarks like PyPerf generate 5,680+ time series points per test, exceeding OpenSearch's 5,000 field limit for a single document. The two-index approach keeps summaries queryable while preserving full time series data.
 
 ```bash
-# Automatically handles both indices
 python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
-    --config chronicler/config/export_config.yml \
     --opensearch
+# Optional: --config /path/to/export_config.yml overrides discovery
 ```
 
 ### Horreum (stub)

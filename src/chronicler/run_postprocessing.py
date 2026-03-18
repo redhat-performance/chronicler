@@ -551,9 +551,14 @@ Examples:
 
     # Load configuration (discovery when --config omitted)
     config_path, config_provenance = resolve_export_config_path(args.config)
-    if args.config is not None and not config_path.exists():
-        logger.warning("Config path does not exist: %s", config_path)
-    elif args.config is None and config_provenance == "none":
+    if args.config is not None:
+        if not config_path.is_file():
+            logger.error(
+                "Config path does not exist or is not a file: %s",
+                config_path,
+            )
+            sys.exit(1)
+    elif config_provenance == "none":
         logger.warning(
             "No export configuration file found. OpenSearch defaults apply unless you set "
             "CHRONICLER_CONFIG, copy export_config_example.yml to export_config.yml next to the "

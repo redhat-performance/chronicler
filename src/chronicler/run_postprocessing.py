@@ -225,7 +225,7 @@ def detect_test_type(result_file: Path) -> Optional[str]:
 
 def load_config(config_path: Optional[Path]) -> Dict[str, Any]:
     """Load configuration from YAML file"""
-    if not config_path or not config_path.exists():
+    if not config_path or not config_path.is_file():
         return {}
 
     try:

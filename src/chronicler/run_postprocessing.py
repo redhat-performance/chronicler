@@ -7,6 +7,7 @@ to OpenSearch. Horreum export is available as a stub (--horreum) for future use.
 
 Usage:
     # Process all benchmarks in a directory and export to OpenSearch
+    # (loads export_config.yml from CHRONICLER_CONFIG, package config/, or CWD if present)
     python -m chronicler.run_postprocessing --input /path/to/results --opensearch
 
     # Horreum export is not implemented; --horreum is a stub for future use
@@ -15,13 +16,15 @@ Usage:
     # Just create JSON files (no export)
     python -m chronicler.run_postprocessing --input /path/to/results --output-json results/
 
-    # Use custom config (run from parent directory)
-    python -m chronicler.run_postprocessing --input /path/to/results --config chronicler/config/export_config.yml
+    # Force a specific config file (overrides discovery)
+    python -m chronicler.run_postprocessing --input /path/to/results --config /path/to/export_config.yml --opensearch
 """
 
 import argparse
 import logging
 import sys
+
+from .config_discovery import resolve_export_config_path
 import traceback
 import yaml
 from pathlib import Path
@@ -228,7 +231,6 @@ def load_config(config_path: Optional[Path]) -> Dict[str, Any]:
     try:
         with open(config_path, 'r') as f:
             config = yaml.safe_load(f)
-        logger.info(f"Loaded config from: {config_path}")
         return config or {}
     except Exception as e:
         logger.error(f"Failed to load config from {config_path}: {e}")
@@ -486,8 +488,8 @@ Examples:
   # Just create JSON files (no export)
   %(prog)s --input /path/to/results --output-json results/
 
-  # Use custom config
-  %(prog)s --input /path/to/results --config export_config.yml --opensearch
+  # Override discovered config
+  %(prog)s --input /path/to/results --config /path/to/export_config.yml --opensearch
         """
     )
 
@@ -501,7 +503,12 @@ Examples:
     parser.add_argument(
         '--config',
         type=Path,
-        help='Configuration file (YAML) with export settings'
+        metavar='PATH',
+        help=(
+            'YAML export settings (OpenSearch, etc.). If omitted, resolves in order: '
+            'CHRONICLER_CONFIG; then <chronicler>/config/export_config.yml; then '
+            './export_config.yml, ./config/export_config.yml, ./chronicler/config/export_config.yml'
+        ),
     )
 
     parser.add_argument(
@@ -542,8 +549,24 @@ Examples:
         logger.error(f"Input path does not exist: {args.input}")
         sys.exit(1)
 
-    # Load configuration
-    config = load_config(args.config)
+    # Load configuration (discovery when --config omitted)
+    config_path, config_provenance = resolve_export_config_path(args.config)
+    if args.config is not None and not config_path.exists():
+        logger.warning("Config path does not exist: %s", config_path)
+    elif args.config is None and config_provenance == "none":
+        logger.warning(
+            "No export configuration file found. OpenSearch defaults apply unless you set "
+            "CHRONICLER_CONFIG, copy export_config_example.yml to export_config.yml next to the "
+            "installed chronicler package (config/), or place export_config.yml in the current "
+            "directory. See README for resolution order."
+        )
+    elif config_path is not None and config_path.is_file():
+        logger.info(
+            "Using export config file %s (source: %s)",
+            config_path,
+            config_provenance,
+        )
+    config = load_config(config_path if config_path is not None else args.config)
 
     # Check if at least one export method is specified
     if not args.opensearch and not args.horreum and not args.output_json:

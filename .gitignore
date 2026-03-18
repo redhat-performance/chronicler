@@ -36,5 +36,6 @@ Thumbs.db
 extracted_*/
 temp_*/
 
-# Config files
+# Config files (credentials)
 config/export_config.yml
+src/chronicler/config/export_config.yml

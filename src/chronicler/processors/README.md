@@ -594,10 +594,9 @@ python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
     --output-json /tmp/test_json/
 
-# Test OpenSearch export
+# Test OpenSearch export (config auto-discovered, or --config PATH)
 python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
-    --config export_config.yml \
     --opensearch
 ```
 

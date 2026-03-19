@@ -215,7 +215,7 @@
             "iterations_requested": {"type": "integer"},
             "parameters": {
               "type": "object",
-              "enabled": true
+              "dynamic": true
             },
             "environment": {
               "type": "object",

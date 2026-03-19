@@ -18,6 +18,14 @@
       "dynamic": false,
       "dynamic_templates": [
         {
+          "test_config_parameters_as_keyword": {
+            "path_match": "test_configuration.parameters.*",
+            "mapping": {
+              "type": "keyword"
+            }
+          }
+        },
+        {
           "run_objects": {
             "path_match": "results.runs.*",
             "mapping": {

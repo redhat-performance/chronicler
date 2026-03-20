@@ -62,7 +62,11 @@ version = {attr = "chronicler.__version__"}
 where = ["src"]
 
 [tool.setuptools.package-data]
-chronicler = ["config/export_config_example.yml"]
+chronicler = [
+    "config/export_config_example.yml",
+    "config/opensearch_index_template.json",
+    "config/opensearch_timeseries_template.json",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -8,4 +8,4 @@ COPY . /chronicler
 
 RUN python3 -m pip install .
 
-ENTRYPOINT ['python3', '-m', 'chronicler.run_postprocessing']
+ENTRYPOINT ["python3", "-m", "chronicler.run_postprocessing"]

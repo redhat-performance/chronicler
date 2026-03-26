@@ -1,0 +1,28 @@
+# Test outputs and sample data
+tests/output_*.json
+tests/*.json
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Extracted archives (temporary)
+extracted_*/
+temp_*/
+
+# Config files (credentials)
+config/export_config.yml
+src/chronicler/config/export_config.yml

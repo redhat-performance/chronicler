@@ -58,6 +58,67 @@ Tests Processed:
 
 ---
 
+## Running with a Container
+
+A pre-built image is available at `quay.io/zathras/chronicler`.
+
+### Prepare your config
+
+The container expects the config file at `/config/config.yaml` (set via `CHRONICLER_CONFIG`). Copy and edit the example:
+
+```bash
+cp config/export_config_example.yml /path/to/your/config.yaml
+vim /path/to/your/config.yaml   # Add your credentials
+```
+
+### Run the container
+
+Mount your config file and your benchmark results directory into the container, then pass the same CLI flags as the local invocation:
+
+```bash
+# Podman — export to OpenSearch
+podman run --rm \
+    -v /path/to/your/config.yaml:/config/config.yaml:z \
+    -v /path/to/results:/results:z \
+    quay.io/zathras/chronicler \
+    --input /results \
+    --opensearch
+
+# Docker — export to OpenSearch
+docker run --rm \
+    -v /path/to/your/config.yaml:/config/config.yaml \
+    -v /path/to/results:/results \
+    quay.io/zathras/chronicler \
+    --input /results \
+    --opensearch
+
+# Write JSON output instead of exporting
+podman run --rm \
+    -v /path/to/results:/results:z \
+    -v /tmp/json_output:/output:z \
+    quay.io/zathras/chronicler \
+    --input /results \
+    --output-json /output
+```
+
+> **Note:** The `:z` flag on volume mounts is required by SELinux on Fedora/RHEL hosts. Omit it on other platforms.
+
+### Override the config path at runtime
+
+If you prefer to place the config file elsewhere, override the environment variable:
+
+```bash
+podman run --rm \
+    -e CHRONICLER_CONFIG=/data/my_config.yaml \
+    -v /path/to/your/config.yaml:/data/my_config.yaml:z \
+    -v /path/to/results:/results:z \
+    quay.io/zathras/chronicler \
+    --input /results \
+    --opensearch
+```
+
+---
+
 ## Detailed Usage
 
 ### Benchmark Support Status

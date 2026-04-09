@@ -329,6 +329,14 @@ class BaseProcessor(ABC):
         # Parse runs (implemented by subclass)
         runs = self.parse_runs(extracted)
 
+        # If no test_results_report, derive status from run statuses
+        if status == "UNKNOWN" and runs:
+            run_statuses = [r.status for r in runs.values() if hasattr(r, 'status')]
+            if run_statuses and all(s == "PASS" for s in run_statuses):
+                status = "PASS"
+            elif any(s == "FAIL" for s in run_statuses):
+                status = "FAIL"
+
         # Calculate overall statistics
         overall_stats = self._calculate_overall_statistics(runs)
 

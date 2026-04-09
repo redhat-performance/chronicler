@@ -59,12 +59,16 @@ class PigProcessor(BaseProcessor):
         result_dir = Path(extracted_result['extracted_path'])
 
         # The extracted path is already the pig_DATE directory
-        # Look for the results subdirectory
-        results_dir = result_dir / f"results_{self.get_test_name()}_throughput-performance"
+        # Look for the results subdirectory (tuned profile varies: throughput-performance, virtual-guest, etc.)
+        results_dirs = list(result_dir.glob(f"results_{self.get_test_name()}_*"))
 
-        if not results_dir.exists():
-            logger.warning(f"Results directory not found: {results_dir}")
+        if not results_dirs:
+            logger.warning(f"No results directory matching results_{self.get_test_name()}_* found in {result_dir}")
             return {}
+
+        results_dir = results_dirs[0]
+        if len(results_dirs) > 1:
+            logger.info(f"Multiple results directories found, using: {results_dir.name}")
 
         # Parse the CSV file
         csv_file = results_dir / "results_pig.csv"

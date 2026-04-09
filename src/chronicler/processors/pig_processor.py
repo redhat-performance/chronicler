@@ -60,21 +60,16 @@ class PigProcessor(BaseProcessor):
 
         # The extracted path is already the pig_DATE directory
         # Look for the results subdirectory (tuned profile varies: throughput-performance, virtual-guest, etc.)
-        results_dirs = list(result_dir.glob(f"results_{self.get_test_name()}_*"))
+        csv_files = sorted(result_dir.glob(f"results_{self.get_test_name()}_*/results_pig.csv"))
 
-        if not results_dirs:
-            logger.warning(f"No results directory matching results_{self.get_test_name()}_* found in {result_dir}")
+        if not csv_files:
+            logger.warning(f"No results_pig.csv found matching results_{self.get_test_name()}_*/results_pig.csv in {result_dir}")
             return {}
 
-        results_dir = results_dirs[0]
-        if len(results_dirs) > 1:
+        csv_file = csv_files[0]
+        results_dir = csv_file.parent
+        if len(csv_files) > 1:
             logger.info(f"Multiple results directories found, using: {results_dir.name}")
-
-        # Parse the CSV file
-        csv_file = results_dir / "results_pig.csv"
-        if not csv_file.exists():
-            logger.warning(f"CSV file not found: {csv_file}")
-            return {}
 
         thread_data = self._parse_pig_csv(csv_file)
 

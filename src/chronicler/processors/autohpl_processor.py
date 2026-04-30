@@ -144,7 +144,7 @@ class AutoHPLProcessor(BaseProcessor):
                     continue
 
                 # Comma-delimited header with Start_Date, End_Date
-                if line_stripped.startswith("T/V") and "," in line_stripped:
+                if (line_stripped.startswith("T/V") or line_stripped.startswith("TV")) and "," in line_stripped:
                     tokens = [t.strip() for t in line_stripped.split(",")]
                     if len(tokens) >= 9 and tokens[-2] == "Start_Date" and tokens[-1] == "End_Date":
                         header_has_timestamps = True

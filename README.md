@@ -2,153 +2,13 @@
 
 Export Zathras benchmark results to OpenSearch for centralized analysis, dashboards, and performance tracking. Horreum export is available as a stub (not implemented) for future use.
 
-Install the package before running the CLI (see [Installation & Setup](#installation--setup)).
-
----
-
-## How to Run
-
-Process entire result directories automatically:
-
-```bash
-# 1. Configure credentials (next to the installed chronicler package)
-PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
-cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
-vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
-
-# 2. Process and export (config is discovered automatically; see below)
-python3 -m chronicler.run_postprocessing \
-    --input /path/to/results \
-    --opensearch
-
-# Or just generate JSON files
-python3 -m chronicler.run_postprocessing \
-    --input /path/to/results \
-    --output-json /tmp/json_output
-```
-
-**What it does:**
-- Recursively discovers all result directories
-- Auto-detects benchmark types (coremark, streams, pyperf, etc.)
-- Batch processes all results
-- Exports to OpenSearch or saves JSON (Horreum is a stub)
-- Provides detailed summary report
-
-**Example output:**
-```
-2025-11-06 21:00:31 - Searching for results in: production_data
-2025-11-06 21:00:31 - Found 34 result directory(ies)
-2025-11-06 21:00:34 - Processing coremark: results_coremark.zip
-  [SUCCESS] Parsed coremark: coremark_Standard_D128ds_v6_2_20251107_020034
-  [EXPORT] Exported to OpenSearch (summary): coremark_Standard_D128ds_v6_2_20251107_020034
-
-======================================================================
-PROCESSING SUMMARY
-======================================================================
-Total: 109 files
-Successful: 78 benchmarks
-Skipped: 31 (unknown types)
-Duration: 109.38 seconds
-
-Tests Processed:
-  - coremark: 12
-  - streams: 11
-  - pyperf: 6 (34,080 time series points)
-  - specjbb: 11
-  - And more...
-```
-
----
-
-## Running with a Container
-
-A pre-built image is available at `quay.io/zathras/chronicler`.
-
-### Prepare your config
-
-The container expects the config file at `/config/config.yaml` (set via `CHRONICLER_CONFIG`). Copy and edit the example:
-
-```bash
-cp config/export_config_example.yml /path/to/your/config.yaml
-vim /path/to/your/config.yaml   # Add your credentials
-```
-
-### Run the container
-
-Mount your config file and your benchmark results directory into the container, then pass the same CLI flags as the local invocation:
-
-```bash
-# Podman — export to OpenSearch
-podman run --rm \
-    -v /path/to/your/config.yaml:/config/config.yaml:z \
-    -v /path/to/results:/results:z \
-    quay.io/zathras/chronicler \
-    --input /results \
-    --opensearch
-
-# Docker — export to OpenSearch
-docker run --rm \
-    -v /path/to/your/config.yaml:/config/config.yaml \
-    -v /path/to/results:/results \
-    quay.io/zathras/chronicler \
-    --input /results \
-    --opensearch
-
-# Write JSON output instead of exporting
-podman run --rm \
-    -v /path/to/results:/results:z \
-    -v /tmp/json_output:/output:z \
-    quay.io/zathras/chronicler \
-    --input /results \
-    --output-json /output
-```
-
-> **Note:** The `:z` flag on volume mounts is required by SELinux on Fedora/RHEL hosts. Omit it on other platforms.
-
-### Override the config path at runtime
-
-If you prefer to place the config file elsewhere, override the environment variable:
-
-```bash
-podman run --rm \
-    -e CHRONICLER_CONFIG=/data/my_config.yaml \
-    -v /path/to/your/config.yaml:/data/my_config.yaml:z \
-    -v /path/to/results:/results:z \
-    quay.io/zathras/chronicler \
-    --input /results \
-    --opensearch
-```
-
----
-
-## Detailed Usage
-
-### Benchmark Support Status
-
-| Benchmark | Post-Processing Support | Processor | Notes |
-|-----------|------------------------|-----------|-------|
-| CoreMark | Supported | `coremark_processor.py` | Single-thread CPU performance |
-| CoreMark Pro | Supported | `coremark_pro_processor.py` | 9 workload types |
-| FIO | Supported | `fio_processor.py` | Flexible I/O tester |
-| HPL (autohpl) | Supported | `autohpl_processor.py` | High Performance Computing Linpack |
-| Passmark | Supported | `passmark_processor.py` | CPU & Memory marks |
-| Phoronix Test Suite | Supported | `phoronix_processor.py` | 51 sub-tests (BOPs) |
-| Pig | Supported | `pig_processor.py` | Processor scheduler efficiency |
-| PyPerf | Supported | `pyperf_processor.py` | 90 Python benchmarks, 5,680 time series points |
-| SPEC CPU 2017 | Supported | `speccpu2017_processor.py` | Compute-intensive performance suite |
-| SpecJBB | Supported | `specjbb_processor.py` | Java business benchmark (Critical/Max-jOPS) |
-| STREAM | Supported | `streams_processor.py` | Memory bandwidth (Copy, Scale, Add, Triad) |
-| Uperf | Supported | `uperf_processor.py` | Network performance (IOPS, latency, throughput) |
-| HammerDB | Not Supported | - | Database benchmarking (MariaDB, PostgreSQL) |
-| IOzone | Not Supported | - | File system benchmarking |
-| Linpack | Not Supported | - | Licensed Linpack benchmark |
-| NUMA STREAM | Not Supported | - | NUMA memory bandwidth extension |
-
-**12 of 16 benchmarks supported** | **35,000+ time series points per production run**
+**Quick start:** For a **local Python** workflow, follow **Installation & Setup** first (venv, install, verify, optional tests, then **Configuration**). Then use **How to run** for CLI examples. Prefer **Running with a container**? Skip pip there; you still supply config and volume mounts. Deeper topics (benchmark matrix, CI, OpenSearch queries) come later in the document.
 
 ---
 
 ## Installation & Setup
+
+Complete this section on your machine before **How to run** (unless you use only the container image).
 
 ### Prerequisites
 - Python 3.9+
@@ -247,6 +107,150 @@ processing:
   continue_on_error: true
   verbose: false
 ```
+
+---
+
+## How to Run
+
+After **Install the package** and **Configuration** above, run the post-processing CLI on your result directories (same activated venv you used for `pip install`):
+
+```bash
+# 1. Configure credentials (next to the installed chronicler package)
+PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
+cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
+vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
+
+# 2. Process and export (config is discovered automatically; see below)
+python3 -m chronicler.run_postprocessing \
+    --input /path/to/results \
+    --opensearch
+
+# Or just generate JSON files
+python3 -m chronicler.run_postprocessing \
+    --input /path/to/results \
+    --output-json /tmp/json_output
+```
+
+**What it does:**
+- Recursively discovers all result directories
+- Auto-detects benchmark types (coremark, streams, pyperf, etc.)
+- Batch processes all results
+- Exports to OpenSearch or saves JSON (Horreum is a stub)
+- Provides detailed summary report
+
+**Example output:**
+```
+2025-11-06 21:00:31 - Searching for results in: production_data
+2025-11-06 21:00:31 - Found 34 result directory(ies)
+2025-11-06 21:00:34 - Processing coremark: results_coremark.zip
+  [SUCCESS] Parsed coremark: coremark_Standard_D128ds_v6_2_20251107_020034
+  [EXPORT] Exported to OpenSearch (summary): coremark_Standard_D128ds_v6_2_20251107_020034
+
+======================================================================
+PROCESSING SUMMARY
+======================================================================
+Total: 109 files
+Successful: 78 benchmarks
+Skipped: 31 (unknown types)
+Duration: 109.38 seconds
+
+Tests Processed:
+  - coremark: 12
+  - streams: 11
+  - pyperf: 6 (34,080 time series points)
+  - specjbb: 11
+  - And more...
+```
+
+---
+
+## Running with a Container
+
+Use this path when you prefer not to install Chronicler with pip locally. The image includes the CLI entrypoint; you still provide a config file and mount your result directories.
+
+A pre-built image is available at `quay.io/zathras/chronicler`.
+
+### Prepare your config
+
+The container expects the config file at `/config/config.yaml` (set via `CHRONICLER_CONFIG`). Copy and edit the example:
+
+```bash
+cp config/export_config_example.yml /path/to/your/config.yaml
+vim /path/to/your/config.yaml   # Add your credentials
+```
+
+### Run the container
+
+Mount your config file and your benchmark results directory into the container, then pass the same CLI flags as the local invocation:
+
+```bash
+# Podman — export to OpenSearch
+podman run --rm \
+    -v /path/to/your/config.yaml:/config/config.yaml:z \
+    -v /path/to/results:/results:z \
+    quay.io/zathras/chronicler \
+    --input /results \
+    --opensearch
+
+# Docker — export to OpenSearch
+docker run --rm \
+    -v /path/to/your/config.yaml:/config/config.yaml \
+    -v /path/to/results:/results \
+    quay.io/zathras/chronicler \
+    --input /results \
+    --opensearch
+
+# Write JSON output instead of exporting
+podman run --rm \
+    -v /path/to/results:/results:z \
+    -v /tmp/json_output:/output:z \
+    quay.io/zathras/chronicler \
+    --input /results \
+    --output-json /output
+```
+
+> **Note:** The `:z` flag on volume mounts is required by SELinux on Fedora/RHEL hosts. Omit it on other platforms.
+
+### Override the config path at runtime
+
+If you prefer to place the config file elsewhere, override the environment variable:
+
+```bash
+podman run --rm \
+    -e CHRONICLER_CONFIG=/data/my_config.yaml \
+    -v /path/to/your/config.yaml:/data/my_config.yaml:z \
+    -v /path/to/results:/results:z \
+    quay.io/zathras/chronicler \
+    --input /results \
+    --opensearch
+```
+
+---
+
+## Detailed Usage
+
+### Benchmark Support Status
+
+| Benchmark | Post-Processing Support | Processor | Notes |
+|-----------|------------------------|-----------|-------|
+| CoreMark | Supported | `coremark_processor.py` | Single-thread CPU performance |
+| CoreMark Pro | Supported | `coremark_pro_processor.py` | 9 workload types |
+| FIO | Supported | `fio_processor.py` | Flexible I/O tester |
+| HPL (autohpl) | Supported | `autohpl_processor.py` | High Performance Computing Linpack |
+| Passmark | Supported | `passmark_processor.py` | CPU & Memory marks |
+| Phoronix Test Suite | Supported | `phoronix_processor.py` | 51 sub-tests (BOPs) |
+| Pig | Supported | `pig_processor.py` | Processor scheduler efficiency |
+| PyPerf | Supported | `pyperf_processor.py` | 90 Python benchmarks, 5,680 time series points |
+| SPEC CPU 2017 | Supported | `speccpu2017_processor.py` | Compute-intensive performance suite |
+| SpecJBB | Supported | `specjbb_processor.py` | Java business benchmark (Critical/Max-jOPS) |
+| STREAM | Supported | `streams_processor.py` | Memory bandwidth (Copy, Scale, Add, Triad) |
+| Uperf | Supported | `uperf_processor.py` | Network performance (IOPS, latency, throughput) |
+| HammerDB | Not Supported | - | Database benchmarking (MariaDB, PostgreSQL) |
+| IOzone | Not Supported | - | File system benchmarking |
+| Linpack | Not Supported | - | Licensed Linpack benchmark |
+| NUMA STREAM | Not Supported | - | NUMA memory bandwidth extension |
+
+**12 of 16 benchmarks supported** | **35,000+ time series points per production run**
 
 ---
 

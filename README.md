@@ -2,6 +2,8 @@
 
 Export Zathras benchmark results to OpenSearch for centralized analysis, dashboards, and performance tracking. Horreum export is available as a stub (not implemented) for future use.
 
+Install the package before running the CLI (see [Installation & Setup](#installation--setup)).
+
 ---
 
 ## How to Run
@@ -149,11 +151,11 @@ podman run --rm \
 ## Installation & Setup
 
 ### Prerequisites
-- Python 3.8+
+- Python 3.9+
 - Zathras benchmark results
-- OpenSearch access (optional for local testing)
+- OpenSearch access (optional if you only use `--output-json`)
 
-### Install Dependencies
+### Install the package
 
 Use a project virtual environment; do not install into the system Python.
 
@@ -161,14 +163,30 @@ Use a project virtual environment; do not install into the system Python.
 cd /path/to/chronicler
 python3 -m venv .venv
 source .venv/bin/activate   # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+
+# OpenSearch export (most common):
+pip install ".[opensearch]"
+
+# JSON-only output (no OpenSearch Python client):
+pip install .
+
+# Development (editable install, tests, and OpenSearch client):
+pip install -e ".[opensearch,dev]"
 ```
+
+Verify the install:
+
+```bash
+python3 -c "import chronicler; print(chronicler.__file__)"
+```
+
+Dependencies and optional extras are defined in `pyproject.toml`. Prefer the commands above over `requirements.txt` (kept as a legacy flat list; see comments in that file).
 
 **Running tests** (with venv activated):
 
 ```bash
 cd /path/to/chronicler
-pip install -e ".[dev]"  # Install package with test dependencies
+pip install -e ".[opensearch,dev]"   # if not already installed for development
 pytest tests/ -v         # Run all 197 tests
 
 # Run by category
@@ -182,10 +200,10 @@ The test suite covers:
 - **Archive handling**: zip/tar extraction
 - **Processors**: timestamp validation, run parsing, metric extraction
 
-**Dependencies:**
-- `pyyaml` - Configuration and result parsing
-- `python-dateutil` - Timestamp handling
-- `requests` - optional, for future Horreum implementation
+**Dependencies** (see `pyproject.toml`):
+- `pyyaml` — configuration and result parsing (always installed)
+- `opensearch-py` — OpenSearch export (install with `.[opensearch]`)
+- `requests` — optional Horreum client path (install with `.[horreum]`; Horreum export is still a stub)
 
 ### Configuration
 

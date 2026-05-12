@@ -112,15 +112,10 @@ processing:
 
 ## How to Run
 
-After **Install the package** and **Configuration** above, run the post-processing CLI on your result directories (same activated venv you used for `pip install`):
+After completing **Installation & Setup** above (including **Install the package** and **Configuration**), run the post-processing CLI on your result directories (same activated venv you used for `pip install`):
 
 ```bash
-# 1. Configure credentials (next to the installed chronicler package)
-PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
-cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
-vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
-
-# 2. Process and export (config is discovered automatically; see below)
+# Process and export (config is discovered automatically; see Configuration section)
 python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
     --opensearch

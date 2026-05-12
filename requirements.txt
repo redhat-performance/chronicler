@@ -1,9 +1,10 @@
-# Zathras Post-Processing Requirements
-# Python 3.8+
+# Legacy flat dependency list for reference or unusual workflows.
+# Normal installs should use pyproject.toml, for example:
+#   pip install ".[opensearch]"
+# See README.md — Installation & Setup.
+# Python 3.9+
 
-# Core dependencies
 pyyaml>=6.0
-python-dateutil>=2.8.0
 
 # OpenSearch export
 opensearch-py>=2.0.0
@@ -16,4 +17,3 @@ requests>=2.28.0
 
 # Tests
 pytest>=7.0.0
-

@@ -2,19 +2,120 @@
 
 Export Zathras benchmark results to OpenSearch for centralized analysis, dashboards, and performance tracking. Horreum export is available as a stub (not implemented) for future use.
 
+**Quick start:** For a **local Python** workflow, follow **Installation & Setup** first (venv, install, verify, optional tests, then **Configuration**). Then use **How to run** for CLI examples. Prefer **Running with a container**? Skip pip there; you still supply config and volume mounts. Deeper topics (benchmark matrix, CI, OpenSearch queries) come later in the document.
+
+---
+
+## Installation & Setup
+
+Complete this section on your machine before **How to run** (unless you use only the container image).
+
+### Prerequisites
+- Python 3.9+
+- Zathras benchmark results
+- OpenSearch access (optional if you only use `--output-json`)
+
+### Install the package
+
+Use a project virtual environment; do not install into the system Python.
+
+```bash
+cd /path/to/chronicler
+python3 -m venv .venv
+source .venv/bin/activate   # On Windows: .venv\Scripts\activate
+
+# OpenSearch export (most common):
+pip install ".[opensearch]"
+
+# JSON-only output (no OpenSearch Python client):
+pip install .
+
+# Development (editable install, tests, and OpenSearch client):
+pip install -e ".[opensearch,dev]"
+```
+
+Verify the install:
+
+```bash
+python3 -c "import chronicler; print(chronicler.__file__)"
+```
+
+Dependencies and optional extras are defined in `pyproject.toml`. Prefer the commands above over `requirements.txt` (kept as a legacy flat list; see comments in that file).
+
+**Running tests** (with venv activated):
+
+```bash
+cd /path/to/chronicler
+pip install -e ".[opensearch,dev]"   # if not already installed for development
+pytest tests/ -v         # Run full suite (209 tests)
+
+# Run by category
+pytest -m unit           # Fast unit tests only (178 tests)
+pytest -m integration    # Integration tests with file I/O (20 tests)
+```
+
+The test suite covers:
+- **Schema**: dataclass serialization, validation, content hashing
+- **Utilities**: timestamp validation, parsing, run helpers
+- **Archive handling**: zip/tar extraction
+- **Processors**: timestamp validation, run parsing, metric extraction
+
+**Dependencies** (see `pyproject.toml`):
+- `pyyaml` — configuration and result parsing (always installed)
+- `opensearch-py` — OpenSearch export (install with `.[opensearch]`)
+- `requests` — optional Horreum client path (install with `.[horreum]`; Horreum export is still a stub)
+
+### Configuration
+
+Create your configuration file next to the Chronicler Python package (so it is found without passing `--config`):
+
+```bash
+PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
+cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
+vim "$PKG_CONFIG/export_config.yml"
+```
+
+**Discovery order** (when `--config` is omitted):
+
+1. **`CHRONICLER_CONFIG`** — absolute or relative path to a YAML file (recommended for CI/orchestrators).
+2. **Package path** — `<chronicler>/config/export_config.yml` (same directory as `export_config_example.yml` in the install).
+3. **Current working directory**, first match: `./export_config.yml` → `./config/export_config.yml` → `./chronicler/config/export_config.yml`.
+
+If no file is found, the CLI logs a **warning** and runs with an empty config (OpenSearch code defaults only). Passing **`--config PATH`** always uses that path and overrides discovery. Each run logs which file is used (or that the explicit path is missing).
+
+Orchestrators (e.g. Zathras) can rely on **`CHRONICLER_CONFIG`** or on a pre-installed `export_config.yml` beside the package, avoiding a hard-coded path to the Chronicler source tree.
+
+Example config:
+```yaml
+opensearch:
+  url: "https://opensearch.example.com"
+  summary_index: "zathras-results"        # Summary documents
+  timeseries_index: "zathras-timeseries"  # Individual time series points
+  username: "example-user"
+  password: "your-password"
+  verify_ssl: false  # Set to true for production
+
+# Horreum export is not implemented (stub only)
+horreum:
+  url: "http://localhost:8080"
+  username: "your-horreum-username"
+  password: "your-horreum-password"
+  test_name: "Zathras Benchmarks"
+
+processing:
+  batch_size: 500
+  continue_on_error: true
+  verbose: false
+```
+
 ---
 
 ## How to Run
 
-Process entire result directories automatically:
+After completing **Installation & Setup** above (including **Install the package** and **Configuration**), run the post-processing CLI on your result directories (same activated venv you used for `pip install`):
 
 ```bash
-# 1. Configure credentials (next to the installed chronicler package)
-PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
-cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
-vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
-
-# 2. Process and export (config is discovered automatically; see below)
+# Process and export (config is discovered automatically; see Configuration section)
 python3 -m chronicler.run_postprocessing \
     --input /path/to/results \
     --opensearch
@@ -59,6 +160,8 @@ Tests Processed:
 ---
 
 ## Running with a Container
+
+Use this path when you prefer not to install Chronicler with pip locally. The image includes the CLI entrypoint; you still provide a config file and mount your result directories.
 
 A pre-built image is available at `quay.io/zathras/chronicler`.
 
@@ -146,139 +249,64 @@ podman run --rm \
 
 ---
 
-## Installation & Setup
-
-### Prerequisites
-- Python 3.8+
-- Zathras benchmark results
-- OpenSearch access (optional for local testing)
-
-### Install Dependencies
-
-Use a project virtual environment; do not install into the system Python.
-
-```bash
-cd /path/to/chronicler
-python3 -m venv .venv
-source .venv/bin/activate   # On Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-```
-
-**Running tests** (with venv activated):
-
-```bash
-cd /path/to/chronicler
-pip install -e ".[dev]"  # Install package with test dependencies
-pytest tests/ -v         # Run all 197 tests
-
-# Run by category
-pytest -m unit           # Fast unit tests only (146 tests)
-pytest -m integration    # Integration tests with file I/O (20 tests)
-```
-
-The test suite covers:
-- **Schema**: dataclass serialization, validation, content hashing
-- **Utilities**: timestamp validation, parsing, run helpers
-- **Archive handling**: zip/tar extraction
-- **Processors**: timestamp validation, run parsing, metric extraction
-
-**Dependencies:**
-- `pyyaml` - Configuration and result parsing
-- `python-dateutil` - Timestamp handling
-- `requests` - optional, for future Horreum implementation
-
-### Configuration
-
-Create your configuration file next to the Chronicler Python package (so it is found without passing `--config`):
-
-```bash
-PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
-cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
-vim "$PKG_CONFIG/export_config.yml"
-```
-
-**Discovery order** (when `--config` is omitted):
-
-1. **`CHRONICLER_CONFIG`** — absolute or relative path to a YAML file (recommended for CI/orchestrators).
-2. **Package path** — `<chronicler>/config/export_config.yml` (same directory as `export_config_example.yml` in the install).
-3. **Current working directory**, first match: `./export_config.yml` → `./config/export_config.yml` → `./chronicler/config/export_config.yml`.
-
-If no file is found, the CLI logs a **warning** and runs with an empty config (OpenSearch code defaults only). Passing **`--config PATH`** always uses that path and overrides discovery. Each run logs which file is used (or that the explicit path is missing).
-
-Orchestrators (e.g. Zathras) can rely on **`CHRONICLER_CONFIG`** or on a pre-installed `export_config.yml` beside the package, avoiding a hard-coded path to the Chronicler source tree.
-
-Example config:
-```yaml
-opensearch:
-  url: "https://opensearch.example.com"
-  summary_index: "zathras-results"        # Summary documents
-  timeseries_index: "zathras-timeseries"  # Individual time series points
-  username: "example-user"
-  password: "your-password"
-  verify_ssl: false  # Set to true for production
-
-# Horreum export is not implemented (stub only)
-horreum:
-  url: "http://localhost:8080"
-  username: "your-horreum-username"
-  password: "your-horreum-password"
-  test_name: "Zathras Benchmarks"
-
-processing:
-  batch_size: 500
-  continue_on_error: true
-  verbose: false
-```
-
----
-
 ## CI/CD Integration with Burden
 
 ### Automatic Export After Every Benchmark Run
 
-Modify the `burden` script to automatically export results after test completion:
+Burden has built-in Chronicler integration. No script modifications needed.
+
+**Setup:**
+
+1. Install Chronicler with OpenSearch support:
+   ```bash
+   pip install 'chronicler[opensearch]'
+   ```
+
+2. Configure export credentials (choose one method):
+
+   ```bash
+   # Option 1: Environment variable (recommended for CI/orchestrators)
+   export CHRONICLER_CONFIG=/path/to/export_config.yml
+   
+   # Option 2: Package config directory (standard location)
+   PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
+   cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
+   vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
+   
+   # Option 3: Zathras config directory
+   # Place export_config.yml in the Zathras top-level config/ directory
+   cd /path/to/zathras
+   cp /path/to/chronicler/config/export_config_example.yml config/export_config.yml
+   vim config/export_config.yml   # Add your credentials
+   ```
+
+   Config is discovered automatically in this order: `CHRONICLER_CONFIG` environment variable, package `export_config.yml`, Zathras `config/export_config.yml`, or legacy `../chronicler/config/export_config.yml`.
+
+**Usage:**
 
 ```bash
-# Add to burden script after test execution completes
-# Around line where results are finalized (e.g., after archiving)
+# Standard mode (continues on Chronicler errors):
+burden --run_chronicler [other burden options]
 
-# Optional: only invoke when a config is available (same rules as CLI discovery)
-_config_ready() {
-  [ -n "${CHRONICLER_CONFIG}" ] && [ -f "${CHRONICLER_CONFIG}" ] && return 0
-  python3 -c "from pathlib import Path; import chronicler, sys; p=Path(chronicler.__file__).resolve().parent/'config'/'export_config.yml'; sys.exit(0 if p.is_file() else 1)"
-}
+# Strict mode (aborts burden if Chronicler fails):
+burden --run_chronicler_strict [other burden options]
 
-if _config_ready; then
-    echo "Exporting results to OpenSearch..."
-    python3 -m chronicler.run_postprocessing \
-        --input "${RESULT_DIR}" \
-        --opensearch || {
-        echo "WARNING: Post-processing export failed, but continuing..."
-    }
-else
-    echo "INFO: No export config (CHRONICLER_CONFIG or package config/export_config.yml), skipping post-processing export"
-fi
+# Alternatively, use environment variable with --run_chronicler:
+CHRONICLER_STRICT=1 burden --run_chronicler [other burden options]
+
+# Verbose Chronicler output:
+CHRONICLER_VERBOSE=1 burden --run_chronicler [other burden options]
+# OR
+burden --run_chronicler --ansible_noise_level dense [other burden options]
 ```
 
 **Benefits:**
-- Zero manual intervention
-- Results exported immediately after completion
-- Fails gracefully if config missing
-- Works with all burden scenarios
-- Automatic for all team members
-
-**Location in burden script:**
-- Add after result archiving (near `tar` operations)
-- Before final status reporting
-- Ensure `RESULT_DIR` variable points to the top-level result directory
-
-**One-time setup:**
-```bash
-PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
-cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
-vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
-# Or: export CHRONICLER_CONFIG=/secure/path/export_config.yml
-```
+- Zero manual script modification
+- Results exported automatically after test completion
+- Graceful failure handling with `--run_chronicler` or strict abort with `--run_chronicler_strict`
+- Automatic config discovery from multiple locations
+- Works with both archived and non-archived results
+- Verbose logging available for troubleshooting
 
 ---
 

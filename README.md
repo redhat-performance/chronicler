@@ -253,49 +253,60 @@ podman run --rm \
 
 ### Automatic Export After Every Benchmark Run
 
-Modify the `burden` script to automatically export results after test completion:
+Burden has built-in Chronicler integration. No script modifications needed.
+
+**Setup:**
+
+1. Install Chronicler with OpenSearch support:
+   ```bash
+   pip install 'chronicler[opensearch]'
+   ```
+
+2. Configure export credentials (choose one method):
+
+   ```bash
+   # Option 1: Environment variable (recommended for CI/orchestrators)
+   export CHRONICLER_CONFIG=/path/to/export_config.yml
+   
+   # Option 2: Package config directory (standard location)
+   PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
+   cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
+   vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
+   
+   # Option 3: Zathras config directory
+   # Place export_config.yml in the Zathras top-level config/ directory
+   cd /path/to/zathras
+   cp /path/to/chronicler/config/export_config_example.yml config/export_config.yml
+   vim config/export_config.yml   # Add your credentials
+   ```
+
+   Config is discovered automatically in this order: `CHRONICLER_CONFIG` environment variable, package `export_config.yml`, Zathras `config/export_config.yml`, or legacy `../chronicler/config/export_config.yml`.
+
+**Usage:**
 
 ```bash
-# Add to burden script after test execution completes
-# Around line where results are finalized (e.g., after archiving)
+# Standard mode (continues on Chronicler errors):
+burden --run_chronicler [other burden options]
 
-# Optional: only invoke when a config is available (same rules as CLI discovery)
-_config_ready() {
-  [ -n "${CHRONICLER_CONFIG}" ] && [ -f "${CHRONICLER_CONFIG}" ] && return 0
-  python3 -c "from pathlib import Path; import chronicler, sys; p=Path(chronicler.__file__).resolve().parent/'config'/'export_config.yml'; sys.exit(0 if p.is_file() else 1)"
-}
+# Strict mode (aborts burden if Chronicler fails):
+burden --run_chronicler_strict [other burden options]
 
-if _config_ready; then
-    echo "Exporting results to OpenSearch..."
-    python3 -m chronicler.run_postprocessing \
-        --input "${RESULT_DIR}" \
-        --opensearch || {
-        echo "WARNING: Post-processing export failed, but continuing..."
-    }
-else
-    echo "INFO: No export config (CHRONICLER_CONFIG or package config/export_config.yml), skipping post-processing export"
-fi
+# Alternatively, use environment variable with --run_chronicler:
+CHRONICLER_STRICT=1 burden --run_chronicler [other burden options]
+
+# Verbose Chronicler output:
+CHRONICLER_VERBOSE=1 burden --run_chronicler [other burden options]
+# OR
+burden --run_chronicler --ansible_noise_level dense [other burden options]
 ```
 
 **Benefits:**
-- Zero manual intervention
-- Results exported immediately after completion
-- Fails gracefully if config missing
-- Works with all burden scenarios
-- Automatic for all team members
-
-**Location in burden script:**
-- Add after result archiving (near `tar` operations)
-- Before final status reporting
-- Ensure `RESULT_DIR` variable points to the top-level result directory
-
-**One-time setup:**
-```bash
-PKG_CONFIG=$(python3 -c "from pathlib import Path; import chronicler; print(Path(chronicler.__file__).parent/'config')")
-cp "$PKG_CONFIG/export_config_example.yml" "$PKG_CONFIG/export_config.yml"
-vim "$PKG_CONFIG/export_config.yml"   # Add your credentials
-# Or: export CHRONICLER_CONFIG=/secure/path/export_config.yml
-```
+- Zero manual script modification
+- Results exported automatically after test completion
+- Graceful failure handling with `--run_chronicler` or strict abort with `--run_chronicler_strict`
+- Automatic config discovery from multiple locations
+- Works with both archived and non-archived results
+- Verbose logging available for troubleshooting
 
 ---
 

@@ -33,6 +33,19 @@ HPL,100,64,2,2,10.5,50.0,2026-02-04T00:12:03Z,2026-02-04T00:12:33Z"""
     )
 
 
+def test_autohpl_tv_header_without_slash(result_dir):
+    """TV header (no slash, wrapper v2.2+) parses successfully."""
+    csv = """TV,N,NB,P,Q,Time,Gflops,Start_Date,End_Date
+HPL,100,64,2,2,10.5,50.0,2026-02-04T00:12:03Z,2026-02-04T00:12:33Z"""
+    path = _write_csv(result_dir, csv)
+    run_processor_parse(
+        AutoHPLProcessor,
+        result_dir,
+        {FILE_KEY: str(path)},
+        expect_error=False,
+    )
+
+
 def test_autohpl_no_timestamp_columns(result_dir):
     """Colon-delimited format without timestamps raises ProcessorError."""
     csv = """T/V:N:NB:P:Q:Time:Gflops

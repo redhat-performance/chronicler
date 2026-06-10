@@ -34,6 +34,25 @@ def test_speccpu2017_valid_timestamps(result_dir):
     )
 
 
+def test_speccpu2017_csv_in_nested_results_subdir(result_dir):
+    """CSVs in results_speccpu_*/result/ subdirectory (wrapper v2.6+) are discovered."""
+    nested = result_dir / "results_speccpu_virtual-guest_2026.06.09" / "result"
+    nested.mkdir(parents=True)
+    intrate_csv = """Benchmarks,Base copies,Base Run Time,Base Rate,Start_Date,End_Date
+500.perlbench_r,32,494,103,2026-06-09T10:16:39Z,2026-06-09T11:43:31Z"""
+    (nested / "CPU2017.003.intrate.refrate.results.csv").write_text(intrate_csv.strip())
+    fprate_csv = """Benchmarks,Base copies,Base Run Time,Base Rate,Start_Date,End_Date
+503.bwaves_r,32,726,442,2026-06-09T11:43:49Z,2026-06-09T13:44:59Z"""
+    (nested / "CPU2017.004.fprate.refrate.results.csv").write_text(fprate_csv.strip())
+    run_processor_parse(
+        SpecCPU2017Processor,
+        result_dir,
+        {},
+        expect_error=False,
+        extracted_extra={"extracted_path": str(result_dir)},
+    )
+
+
 def test_speccpu2017_no_timestamp_columns(result_dir):
     """Legacy format without Start_Date/End_Date raises ProcessorError."""
     csv = """Benchmark,Base # Copies,Base Run Time,Base Rate

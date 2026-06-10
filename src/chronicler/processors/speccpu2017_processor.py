@@ -88,11 +88,12 @@ class SpecCPU2017Processor(BaseProcessor):
             result_dir = (intrate_csv or fprate_csv).parent
 
         if not (intrate_csv or fprate_csv or intspeed_csv or fpspeed_csv):
-            # From extracted_path: CSVs in result_dir directly or in result/
+            # From extracted_path: CSVs in result_dir directly, in result/, or
+            # in nested results_speccpu_*/result/ (speccpu2017-wrapper v2.6+)
             result_subdir = result_dir / "result"
             if not result_subdir.exists():
                 result_subdir = result_dir
-            for csv_file in result_subdir.glob("*.csv"):
+            for csv_file in result_subdir.rglob("*.csv"):
                 name_lower = csv_file.name.lower()
                 if "intrate" in name_lower or "intspeed" in name_lower:
                     if "rate" in name_lower:

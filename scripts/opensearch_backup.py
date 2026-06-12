@@ -140,11 +140,14 @@ class OpenSearchBackup:
 
         try:
             with urllib.request.urlopen(req, timeout=self.timeout, context=context) as response:
-                response_data = json.loads(response.read().decode('utf-8'))
-                return response_data
+                response_body = response.read().decode('utf-8')
+                # Handle empty-body responses (e.g., successful HEAD requests)
+                if not response_body:
+                    return {}
+                return json.loads(response_body)
         except urllib.error.HTTPError as e:
             error_body = e.read().decode('utf-8')
-            raise Exception(f"HTTP {e.code} error: {error_body}")
+            raise urllib.error.HTTPError(e.url, e.code, f"HTTP {e.code} error: {error_body}", e.headers, None)
         except urllib.error.URLError as e:
             raise Exception(f"Connection error: {e.reason}")
 
@@ -328,13 +331,20 @@ class OpenSearchBackup:
         try:
             self._make_request(f'/{index}', method='HEAD')
             self.logger.info(f"Index '{index}' exists")
-        except:
-            # Do not auto-create index to prevent data loss from missing mappings/settings
-            raise Exception(
-                f"Index '{index}' does not exist. Please create it manually with appropriate "
-                f"mappings and settings before restoring. Automatic index creation has been "
-                f"disabled to prevent data loss from missing schema definitions."
-            )
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                # Index not found - provide clear guidance
+                raise Exception(
+                    f"Index '{index}' does not exist. Please create it manually with appropriate "
+                    f"mappings and settings before restoring. Automatic index creation has been "
+                    f"disabled to prevent data loss from missing schema definitions."
+                )
+            else:
+                # Other HTTP errors (401, 403, 5xx) - re-raise with context
+                raise Exception(f"Failed to check index '{index}': HTTP {e.code} - {e.msg}")
+        except Exception as e:
+            # Network errors, SSL errors, etc - re-raise with context
+            raise Exception(f"Failed to connect to OpenSearch while checking index '{index}': {e}")
 
         # Open backup file
         if input_path.suffix == '.gz':

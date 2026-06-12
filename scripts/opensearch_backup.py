@@ -492,7 +492,9 @@ def cmd_backup(args):
         url=config['url'],
         username=config.get('username'),
         password=config.get('password'),
-        verify_ssl=config.get('verify_ssl', True)
+        auth_token=config.get('auth_token'),
+        verify_ssl=config.get('verify_ssl', True),
+        timeout=config.get('timeout', 30)
     )
 
     # Determine indices to backup
@@ -593,7 +595,9 @@ def cmd_restore(args):
         url=config['url'],
         username=config.get('username'),
         password=config.get('password'),
-        verify_ssl=config.get('verify_ssl', True)
+        auth_token=config.get('auth_token'),
+        verify_ssl=config.get('verify_ssl', True),
+        timeout=config.get('timeout', 30)
     )
 
     input_path = Path(args.input)

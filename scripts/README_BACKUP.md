@@ -9,7 +9,7 @@ A utility for backing up and restoring data from OpenSearch indices before schem
 - **Efficient transfer**: Uses scroll API for backup and bulk API for restore
 - **Compression**: Optional gzip compression to reduce backup file sizes
 - **Flexible**: Backup single indices or both zathras-results and zathras-timeseries together
-- **Resume support**: NDJSON format allows for easy inspection and manual edits
+- **Manual recovery**: NDJSON format allows for easy inspection and manual edits if restore fails
 
 ## Prerequisites
 
@@ -157,7 +157,7 @@ This format is:
 - **Human-readable**: Can be inspected with `less`, `head`, or text editors
 - **Streamable**: Can be processed line-by-line without loading entire file into memory
 - **Editable**: Can be modified with standard Unix tools (`grep`, `sed`, `jq`)
-- **Resumable**: If restore fails partway through, you can resume from where it left off
+- **Recovery on failure**: If restore fails, rerun from the beginning. No resume checkpoints are recorded, but NDJSON is easy to inspect and edit to skip problematic documents if needed
 
 ## Performance Tuning
 

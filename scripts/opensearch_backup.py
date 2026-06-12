@@ -175,7 +175,7 @@ class OpenSearchBackup:
             size_bytes = store.get('size_in_bytes', 0)
 
             # Calculate human-readable size
-            size_human = self._format_bytes(size_bytes)
+            size_human = OpenSearchBackup._format_bytes(size_bytes)
 
             return {
                 'doc_count': doc_count,
@@ -186,7 +186,8 @@ class OpenSearchBackup:
             self.logger.error(f"Failed to get stats for {index}: {e}")
             raise
 
-    def _format_bytes(self, size_bytes: int) -> str:
+    @staticmethod
+    def _format_bytes(size_bytes: int) -> str:
         """Format bytes to human-readable size."""
         for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
             if size_bytes < 1024.0:
@@ -287,7 +288,7 @@ class OpenSearchBackup:
 
             file_size = output_path.stat().st_size
             self.logger.info(f"✓ Backup complete: {docs_written:,} documents written to {output_path}")
-            self.logger.info(f"  Backup file size: {self._format_bytes(file_size)}")
+            self.logger.info(f"  Backup file size: {OpenSearchBackup._format_bytes(file_size)}")
 
             return {
                 'index': index,
@@ -542,8 +543,8 @@ def cmd_backup(args):
 
     print("\n" + "-" * 70)
     print(f"Total documents: {total_docs:,}")
-    print(f"Total index size: {backup._format_bytes(total_size)}")
-    print(f"Estimated backup size: {backup._format_bytes(int(estimated_size))}")
+    print(f"Total index size: {OpenSearchBackup._format_bytes(total_size)}")
+    print(f"Estimated backup size: {OpenSearchBackup._format_bytes(int(estimated_size))}")
     if args.compress:
         print("  (with gzip compression)")
     print("=" * 70 + "\n")
@@ -582,7 +583,7 @@ def cmd_backup(args):
         print(f"\nIndex: {result['index']}")
         print(f"  Documents: {result['documents']:,}")
         print(f"  File: {result['file_path']}")
-        print(f"  Size: {backup._format_bytes(result['file_size'])}")
+        print(f"  Size: {OpenSearchBackup._format_bytes(result['file_size'])}")
     print("=" * 70 + "\n")
 
     return 0
@@ -626,7 +627,7 @@ def cmd_restore(args):
     print("=" * 70)
     print(f"\nSource file: {input_path}")
     print(f"Target index: {target_index}")
-    print(f"File size: {backup._format_bytes(input_path.stat().st_size)}")
+    print(f"File size: {OpenSearchBackup._format_bytes(input_path.stat().st_size)}")
     print("\n" + "=" * 70 + "\n")
 
     if not confirm_action("Proceed with restore?"):
@@ -679,7 +680,7 @@ def cmd_list(args):
     for backup_file in backups:
         size = backup_file.stat().st_size
         # Format size
-        size_str = OpenSearchBackup._format_bytes(None, size)
+        size_str = OpenSearchBackup._format_bytes(size)
         print(f"{backup_file.name}")
         print(f"  Size: {size_str}")
         print(f"  Path: {backup_file}")

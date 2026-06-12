@@ -306,17 +306,18 @@ class OpenSearchBackup:
         self,
         index: str,
         input_path: Path,
-        bulk_size: int = 500,
-        create_index: bool = True
+        bulk_size: int = 500
     ) -> Dict[str, Any]:
         """
         Restore an index from backup using bulk API.
 
+        Note: The target index must exist before restore. Create it manually
+        with appropriate mappings and settings to ensure schema compatibility.
+
         Args:
-            index: Target index name
+            index: Target index name (must already exist)
             input_path: Backup file path
             bulk_size: Number of documents per bulk request
-            create_index: Whether to create the index if it doesn't exist
 
         Returns:
             Dict with restore statistics
@@ -328,20 +329,12 @@ class OpenSearchBackup:
             self._make_request(f'/{index}', method='HEAD')
             self.logger.info(f"Index '{index}' exists")
         except:
-            if create_index:
-                self.logger.info(f"Creating index '{index}'...")
-                self._make_request(
-                    f'/{index}',
-                    method='PUT',
-                    data={
-                        'settings': {
-                            'number_of_shards': 3,
-                            'number_of_replicas': 1
-                        }
-                    }
-                )
-            else:
-                raise Exception(f"Index '{index}' does not exist and create_index=False")
+            # Do not auto-create index to prevent data loss from missing mappings/settings
+            raise Exception(
+                f"Index '{index}' does not exist. Please create it manually with appropriate "
+                f"mappings and settings before restoring. Automatic index creation has been "
+                f"disabled to prevent data loss from missing schema definitions."
+            )
 
         # Open backup file
         if input_path.suffix == '.gz':
@@ -635,8 +628,7 @@ def cmd_restore(args):
         result = backup.restore_index(
             index=target_index,
             input_path=input_path,
-            bulk_size=args.bulk_size,
-            create_index=not args.no_create
+            bulk_size=args.bulk_size
         )
 
         print("\n" + "=" * 70)
@@ -762,11 +754,6 @@ def main():
         type=int,
         default=500,
         help='Documents per bulk request (default: 500)'
-    )
-    restore_parser.add_argument(
-        '--no-create',
-        action='store_true',
-        help='Do not create index if it does not exist'
     )
     restore_parser.set_defaults(func=cmd_restore)
 

@@ -554,12 +554,23 @@ class ZathrasDocument:
 
                 # Validate timeseries has sequence keys
                 if run.timeseries:
-                    for ts_key in run.timeseries.keys():
+                    for ts_key, ts_point in run.timeseries.items():
                         if not ts_key.startswith("sequence_"):
                             errors.append(
                                 f"Invalid sequence key in {run_key}.timeseries: {ts_key}. "
                                 f"Must start with 'sequence_'"
                             )
+
+                        if isinstance(ts_point, TimeSeriesPoint):
+                            metrics = ts_point.metrics
+                        else:
+                            metrics = ts_point.get("metrics", {})
+                        for metric_name, metric_value in metrics.items():
+                            if isinstance(metric_value, (dict, list, tuple)):
+                                errors.append(
+                                    f"{run_key}.timeseries.{ts_key}.metrics.{metric_name} "
+                                    "must be a scalar value, not a nested object or array"
+                                )
 
         return (len(errors) == 0, errors)
 
@@ -690,5 +701,18 @@ def validate_json_schema(document: Dict[str, Any]) -> tuple[bool, List[str]]:
                 if 'timeseries' in run_data:
                     if not isinstance(run_data['timeseries'], dict):
                         errors.append(f"{run_key}.timeseries must be an object with timestamp keys")
+                    else:
+                        for ts_key, ts_point in run_data['timeseries'].items():
+                            metrics = (
+                                ts_point.get('metrics', {})
+                                if isinstance(ts_point, dict)
+                                else {}
+                            )
+                            for metric_name, metric_value in metrics.items():
+                                if isinstance(metric_value, (dict, list, tuple)):
+                                    errors.append(
+                                        f"{run_key}.timeseries.{ts_key}.metrics.{metric_name} "
+                                        "must be a scalar value, not a nested object or array"
+                                    )
 
     return (len(errors) == 0, errors)

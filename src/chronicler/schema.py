@@ -421,14 +421,14 @@ class ZathrasDocument:
 
         # Remove timeseries and per-job details from all runs
         if 'results' in result and 'runs' in result['results']:
-            for run_key, run_data in result['results']['runs'].items():
+            for _, run_data in result['results']['runs'].items():
                 # Remove timeseries data
                 if 'timeseries' in run_data:
                     del run_data['timeseries']
 
                 # Remove per-job breakdown (FIO-specific)
-                if 'metrics' in run_data and 'jobs' in run_data['metrics']:
-                    del run_data['metrics']['jobs']
+                if 'metrics' in run_data:
+                    run_data['metrics'].pop('jobs', None)
 
         return result
 

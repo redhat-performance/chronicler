@@ -375,14 +375,20 @@ def process_result_directory(
                                 document, batch_size=500
                             )
                             stats.record_timeseries_indexed(ts_result['successful'])
-                            ts_msg = (
-                                f"  Exported to OpenSearch (timeseries): "
-                                f"{ts_result['successful']}/{ts_result['total']} points"
-                            )
-                            logger.info(ts_msg)
 
                             if ts_result['failed'] > 0:
-                                logger.warning(f"     Failed: {ts_result['failed']} time series points")
+                                export_failed = True
+                                export_error = (
+                                    f"OpenSearch timeseries export partially failed for {doc_id}: "
+                                    f"{ts_result['failed']}/{ts_result['total']} points failed"
+                                )
+                                logger.error(f"  {export_error}")
+                            else:
+                                ts_msg = (
+                                    f"  Exported to OpenSearch (timeseries): "
+                                    f"{ts_result['successful']}/{ts_result['total']} points"
+                                )
+                                logger.info(ts_msg)
 
                     elif operation == 'duplicate':
                         stats.record_duplicate()

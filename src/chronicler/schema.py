@@ -56,6 +56,7 @@ class TestInfo:
     name: str
     version: str
     wrapper_version: Optional[str] = None
+    schema_version: Optional[str] = None
     description: Optional[str] = None
     url: Optional[str] = None
 

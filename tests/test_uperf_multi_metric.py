@@ -94,9 +94,9 @@ def test_uperf_handles_missing_metric_columns(result_dir):
         mock_extract.return_value = extracted_result
         results = processor.build_results()
 
-    # Should have at least throughput
+    # Should have exactly throughput (no other metrics with missing columns)
     assert results.primary_metrics is not None
-    assert len(results.primary_metrics) >= 1
+    assert len(results.primary_metrics) == 1
 
     metrics_by_name = {m.name: m for m in results.primary_metrics}
-    assert "throughput" in metrics_by_name
+    assert set(metrics_by_name.keys()) == {"throughput"}

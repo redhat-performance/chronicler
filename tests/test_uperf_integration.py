@@ -68,15 +68,15 @@ def test_uperf_integration_end_to_end(result_dir):
     assert metrics_by_name["latency"].unit == "microseconds"
     assert metrics_by_name["transaction_rate"].unit == "trans/s"
 
-    # Verify values are reasonable (means of all data points)
+    # Verify values match expected means (with tight tolerance)
     # Throughput mean: (8.2+15.8+29.5+52.3+9.1+17.6+32.8+58.9) / 8 = 28.025
-    assert 25.0 < metrics_by_name["throughput"].value < 31.0
+    assert metrics_by_name["throughput"].value == pytest.approx(28.025, rel=0.01)
 
     # Latency mean: (120.5+125.2+135.8+148.3+118.9+122.1+130.5+142.7) / 8 = 130.5
-    assert 125.0 < metrics_by_name["latency"].value < 135.0
+    assert metrics_by_name["latency"].value == pytest.approx(130.5, rel=0.01)
 
     # Transaction rate mean: (45k+88k+170k+305k+51k+96k+184k+325k) / 8 = 158,000
-    assert 150000 < metrics_by_name["transaction_rate"].value < 165000
+    assert metrics_by_name["transaction_rate"].value == pytest.approx(158000, rel=0.01)
 
     # Verify timeseries contains all data points
     run = results.runs["run_0"]

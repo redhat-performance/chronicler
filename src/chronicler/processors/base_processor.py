@@ -434,8 +434,22 @@ class BaseProcessor(ABC):
         if metrics:
             for metric_name, metric_val in metrics.items():
                 if isinstance(metric_val, (int, float)):
-                    # Use overall mean if available
-                    value = overall_stats.mean if overall_stats else metric_val
+                    # Aggregate the same metric across all runs
+                    metric_values = []
+                    for run_data in runs.values():
+                        run_metrics = None
+                        if isinstance(run_data, dict):
+                            run_metrics = run_data.get('metrics')
+                        elif hasattr(run_data, 'metrics'):
+                            run_metrics = run_data.metrics
+
+                        if isinstance(run_metrics, dict):
+                            candidate = run_metrics.get(metric_name)
+                            if isinstance(candidate, (int, float)):
+                                metric_values.append(float(candidate))
+
+                    # Use mean of this specific metric across runs
+                    value = statistics.mean(metric_values) if metric_values else float(metric_val)
 
                     # Determine unit from metric name
                     unit = self._guess_unit(metric_name)

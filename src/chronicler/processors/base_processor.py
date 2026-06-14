@@ -30,6 +30,7 @@ from ..schema import (
     HardwareInfo,
     CPUInfo,
     MemoryInfo,
+    BIOSInfo,
     OperatingSystemInfo,
     ConfigurationInfo,
     TestConfiguration,
@@ -247,10 +248,12 @@ class BaseProcessor(ABC):
             hw_data = metadata.get('hardware', {})
             cpu_data = hw_data.get('cpu', {})
             mem_data = hw_data.get('memory', {})
+            bios_data = hw_data.get('bios', {})
 
             hardware = HardwareInfo(
                 cpu=CPUInfo(**cpu_data) if cpu_data else None,
                 memory=MemoryInfo(**mem_data) if mem_data else None,
+                bios=BIOSInfo(**bios_data) if bios_data else None,
                 numa=hw_data.get('numa'),
                 storage=hw_data.get('storage'),
                 network=hw_data.get('network')

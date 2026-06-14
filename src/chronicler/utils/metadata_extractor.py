@@ -66,6 +66,7 @@ class MetadataExtractor:
         {
             "cpu": {...},
             "memory": {...},
+            "bios": {...},
             "numa": {"node_0": {}, "node_1": {}},
             "storage": {"device_0": {}, "device_1": {}},
             "network": {"interface_0": {}, "interface_1": {}}
@@ -78,6 +79,11 @@ class MetadataExtractor:
 
         # Memory info
         hardware['memory'] = self._extract_memory_info()
+
+        # BIOS info
+        bios_info = self._extract_bios_info()
+        if bios_info:
+            hardware['bios'] = bios_info
 
         # NUMA info
         numa_info = self._extract_numa_info()
@@ -253,7 +259,122 @@ class MetadataExtractor:
             if 'memavailable' in meminfo_data:
                 memory_info['available_kb'] = meminfo_data['memavailable']
 
+        # Try dmidecode.out for memory type and speed
+        dmidecode_file = self.sysconfig_dir / "dmidecode.out"
+        if dmidecode_file.exists():
+            dmidecode_memory = self._parse_dmidecode_memory(dmidecode_file)
+            if dmidecode_memory:
+                # Add type and speed if found (don't overwrite existing fields)
+                if 'type' in dmidecode_memory:
+                    memory_info['type'] = dmidecode_memory['type']
+                if 'speed_mhz' in dmidecode_memory:
+                    memory_info['speed_mhz'] = dmidecode_memory['speed_mhz']
+
         return memory_info
+
+    def _extract_bios_info(self) -> Optional[Dict[str, Any]]:
+        """
+        Extract BIOS firmware information from dmidecode.out
+
+        Returns:
+            {
+                "vendor": "American Megatrends Inc.",
+                "version": "1.20.07",
+                "release_date": "10/25/2023"
+            }
+        """
+        dmidecode_file = self.sysconfig_dir / "dmidecode.out"
+        if not dmidecode_file.exists():
+            return None
+
+        bios_info = {}
+
+        try:
+            lines = read_file_lines(str(dmidecode_file), strip=False)
+            in_bios_section = False
+
+            for line in lines:
+                # Detect BIOS Information section
+                if 'BIOS Information' in line:
+                    in_bios_section = True
+                    continue
+
+                # Exit BIOS section when we hit another Handle
+                if in_bios_section and line.startswith('Handle '):
+                    break
+
+                # Parse BIOS fields
+                if in_bios_section:
+                    # Match indented fields: "\tVendor: American Megatrends Inc."
+                    if line.startswith('\t') and ':' in line:
+                        field, value = line.strip().split(':', 1)
+                        value = value.strip()
+
+                        if field == 'Vendor':
+                            bios_info['vendor'] = value
+                        elif field == 'Version':
+                            bios_info['version'] = value
+                        elif field == 'Release Date':
+                            bios_info['release_date'] = value
+
+        except Exception as e:
+            logger.warning(f"Failed to parse BIOS info from dmidecode: {str(e)}")
+
+        return bios_info if bios_info else None
+
+    def _parse_dmidecode_memory(self, file_path: Path) -> Optional[Dict[str, Any]]:
+        """
+        Parse memory type and speed from dmidecode Memory Device sections
+
+        Returns first populated memory device info found:
+            {
+                "type": "DDR4",
+                "speed_mhz": 3200
+            }
+        """
+        memory_info = {}
+
+        try:
+            lines = read_file_lines(str(file_path), strip=False)
+            in_memory_device = False
+
+            for line in lines:
+                # Detect start of Memory Device section
+                # Line after "Handle X, DMI type 17" will be "Memory Device"
+                if 'Memory Device' in line and not line.startswith('\t'):
+                    in_memory_device = True
+                    continue
+
+                # Exit section when we hit another Handle
+                if in_memory_device and line.startswith('Handle '):
+                    # If we found type and speed, we're done
+                    if 'type' in memory_info and 'speed_mhz' in memory_info:
+                        break
+                    # Otherwise, reset and keep looking
+                    in_memory_device = False
+                    continue
+
+                # Parse memory device fields
+                if in_memory_device:
+                    if line.startswith('\t') and ':' in line:
+                        field, value = line.strip().split(':', 1)
+                        value = value.strip()
+
+                        # Extract memory type (DDR4, DDR5, etc.)
+                        if field == 'Type' and value not in ['Unknown', 'Not Specified', '<OUT OF SPEC>']:
+                            if 'type' not in memory_info:  # Use first valid type found
+                                memory_info['type'] = value
+
+                        # Extract speed in MHz (parse "3200 MT/s" -> 3200)
+                        if field in ['Speed', 'Configured Memory Speed']:
+                            match = re.match(r'(\d+)\s*MT/s', value)
+                            if match and 'speed_mhz' not in memory_info:
+                                memory_info['speed_mhz'] = int(match.group(1))
+
+        except Exception as e:
+            logger.warning(f"Failed to parse memory info from dmidecode: {str(e)}")
+
+        return memory_info if memory_info else None
 
     def _extract_numa_info(self) -> Optional[Dict[str, Any]]:
         """

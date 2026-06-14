@@ -383,8 +383,14 @@ class BaseProcessor(ABC):
         # Collect all primary metric values from runs
         values = []
         for run_key, run_data in runs.items():
+            metrics = None
+            # Handle both dict and Run dataclass objects
             if isinstance(run_data, dict) and 'metrics' in run_data:
                 metrics = run_data['metrics']
+            elif hasattr(run_data, 'metrics') and run_data.metrics:
+                metrics = run_data.metrics
+
+            if metrics:
                 # Get the first numeric metric value
                 for metric_val in metrics.values():
                     if isinstance(metric_val, (int, float)):
@@ -413,8 +419,14 @@ class BaseProcessor(ABC):
 
         # Get first run's first metric as primary
         first_run = list(runs.values())[0]
+        metrics = None
+        # Handle both dict and Run dataclass objects
         if isinstance(first_run, dict) and 'metrics' in first_run:
             metrics = first_run['metrics']
+        elif hasattr(first_run, 'metrics') and first_run.metrics:
+            metrics = first_run.metrics
+
+        if metrics:
             for metric_name, metric_val in metrics.items():
                 if isinstance(metric_val, (int, float)):
                     # Use overall mean if available
@@ -438,8 +450,15 @@ class BaseProcessor(ABC):
 
         total_time = 0.0
         for run_key, run_data in runs.items():
+            duration = None
+            # Handle both dict and Run dataclass objects
             if isinstance(run_data, dict) and 'duration_seconds' in run_data:
-                total_time += run_data['duration_seconds']
+                duration = run_data['duration_seconds']
+            elif hasattr(run_data, 'duration_seconds') and run_data.duration_seconds:
+                duration = run_data.duration_seconds
+
+            if duration:
+                total_time += duration
 
         return total_time if total_time > 0 else None
 

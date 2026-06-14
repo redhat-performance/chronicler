@@ -39,3 +39,13 @@ temp_*/
 # Config files (credentials)
 config/export_config.yml
 src/chronicler/config/export_config.yml
+
+# Temporary analysis files (issue #19)
+FIELD_COUNT_ANALYSIS.md
+IMPLEMENTATION_PLAN_RPOPC-1273.md
+analyze_run_fields.py
+count_fields_by_section.py
+show_metrics_structure.py
+verify_field_count.py
+backups/
+sample_data/

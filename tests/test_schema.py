@@ -313,6 +313,55 @@ class TestZathrasDocument:
         run_data = d["results"]["runs"]["run_1"]
         assert "timeseries" not in run_data
 
+    def test_to_dict_summary_only_removes_per_job_details(self):
+        """Test that to_dict_summary_only removes metrics.jobs array (FIO-specific)."""
+        doc = ZathrasDocument(
+            metadata=Metadata(document_id="fio-test"),
+            test=TestInfo(name="fio", version="3.35"),
+            system_under_test=SystemUnderTest(),
+            test_configuration=TestConfiguration(),
+            results=Results(
+                status="PASS",
+                runs={
+                    "run_0": Run(
+                        run_number=0,
+                        status="PASS",
+                        metrics={
+                            "total_bandwidth_kbps": 1000000,
+                            "total_iops": 250000,
+                            "jobs": [
+                                {
+                                    "job_number": 0,
+                                    "device": "/dev/sda",
+                                    "bandwidth_kbps": 500000,
+                                    "iops": 125000,
+                                },
+                                {
+                                    "job_number": 1,
+                                    "device": "/dev/sdb",
+                                    "bandwidth_kbps": 500000,
+                                    "iops": 125000,
+                                },
+                            ],
+                        },
+                    )
+                },
+            ),
+        )
+
+        # Full dict should have jobs
+        full_dict = doc.to_dict()
+        assert "jobs" in full_dict["results"]["runs"]["run_0"]["metrics"]
+        assert len(full_dict["results"]["runs"]["run_0"]["metrics"]["jobs"]) == 2
+
+        # Summary dict should NOT have jobs
+        summary_dict = doc.to_dict_summary_only()
+        assert "jobs" not in summary_dict["results"]["runs"]["run_0"]["metrics"]
+
+        # But should still have aggregated metrics
+        assert summary_dict["results"]["runs"]["run_0"]["metrics"]["total_bandwidth_kbps"] == 1000000
+        assert summary_dict["results"]["runs"]["run_0"]["metrics"]["total_iops"] == 250000
+
     def test_validate_valid_document(self, minimal_document):
         is_valid, errors = minimal_document.validate()
         assert is_valid

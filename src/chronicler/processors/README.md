@@ -29,7 +29,8 @@ BaseProcessor (abstract)
 ├── UperfProcessor
 ├── PigProcessor
 ├── AutoHPLProcessor
-└── SpecCPU2017Processor
+├── SpecCPU2017Processor
+└── FioProcessor
 ```
 
 ### Data Flow
@@ -414,6 +415,56 @@ Results:
 - Preserves suite-level context (integer vs floating point)
 - Overall SPEC score is meaningful composite metric
 - Single test execution = single document (semantically correct)
+
+---
+
+### 12. FIO (`fio_processor.py`)
+
+**Benchmarks:** Flexible I/O Tester - disk performance
+
+**Key Features:**
+- Parses multiple workload runs (different I/O patterns)
+- Extracts bandwidth, IOPS, latency metrics aggregated across all jobs
+- Stores latency percentiles (p1, p5, p10, p50, p90, p95, p99, p99.5, p99.9)
+- **Per-job breakdown removed from OpenSearch** (available in raw JSON)
+
+**Data Structure:**
+```python
+Run:
+  metrics:
+    # Aggregated across all jobs/disks
+    total_bandwidth_kbps: 1000000
+    total_iops: 250000
+    avg_latency_mean_ns: 134845
+    avg_clat_mean_ns: 131462
+    avg_slat_mean_ns: 3382
+    # Latency percentiles (aggregate)
+    avg_latency_p1_ns: 72192
+    avg_latency_p50_ns: 128512
+    avg_latency_p99_ns: 259072
+    # Metadata
+    num_jobs: 8
+    num_disks: 8
+  timeseries_summary:
+    count: 120
+    mean: 473231.0
+    min: 465628.0
+    max: 490332.0
+  configuration:
+    operation: "read"
+    block_size: "4k"
+    iodepth: 16
+```
+
+**Field Count:** ~3,200 fields for 48 runs (well under 5,000 limit)
+
+**Design Decision:**
+- FIO originally stored per-job breakdown (`metrics.jobs` array) in OpenSearch
+- This caused field explosion (6,632 fields for 48 runs with per-job data)
+- Changed to aggregated-only approach (matching CoreMark, Passmark, Uperf)
+- Per-job data preserved in raw JSON archives
+
+See `docs/fio-per-job-data.md` for accessing per-job breakdowns from raw archives.
 
 ---
 

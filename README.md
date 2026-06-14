@@ -230,7 +230,7 @@ podman run --rm \
 |-----------|------------------------|-----------|-------|
 | CoreMark | Supported | `coremark_processor.py` | Single-thread CPU performance |
 | CoreMark Pro | Supported | `coremark_pro_processor.py` | 9 workload types |
-| FIO | Supported | `fio_processor.py` | Flexible I/O tester |
+| FIO | Supported | `fio_processor.py` | Flexible I/O tester (see [per-job data docs](docs/fio-per-job-data.md)) |
 | HPL (autohpl) | Supported | `autohpl_processor.py` | High Performance Computing Linpack |
 | Passmark | Supported | `passmark_processor.py` | CPU & Memory marks |
 | Phoronix Test Suite | Supported | `phoronix_processor.py` | 51 sub-tests (BOPs) |

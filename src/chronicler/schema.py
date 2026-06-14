@@ -406,17 +406,29 @@ class ZathrasDocument:
 
     def to_dict_summary_only(self) -> Dict[str, Any]:
         """
-        Convert to dictionary WITHOUT timeseries data.
-        Only includes timeseries_summary for each run.
+        Convert to dictionary WITHOUT timeseries data and per-job details.
+        Only includes timeseries_summary and aggregated metrics for each run.
         Used for the main zathras-results index.
+
+        Removes:
+        - timeseries: Detailed time series data (available in zathras-timeseries index)
+        - metrics.jobs: Per-job breakdown (available in raw JSON archives)
+
+        This keeps field count under OpenSearch's default 5,000 field limit and
+        aligns FIO with the aggregated approach used by other benchmarks.
         """
         result = self.to_dict()
 
-        # Remove timeseries from all runs
+        # Remove timeseries and per-job details from all runs
         if 'results' in result and 'runs' in result['results']:
-            for run_key, run_data in result['results']['runs'].items():
+            for _, run_data in result['results']['runs'].items():
+                # Remove timeseries data
                 if 'timeseries' in run_data:
                     del run_data['timeseries']
+
+                # Remove per-job breakdown (FIO-specific)
+                if 'metrics' in run_data:
+                    run_data['metrics'].pop('jobs', None)
 
         return result
 

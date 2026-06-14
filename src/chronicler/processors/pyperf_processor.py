@@ -89,113 +89,19 @@ class PyPerfProcessor(BaseProcessor):
     """
     Processor for PyPerf Python benchmark results.
 
-    PyPerf creates one document per benchmark to avoid OpenSearch field limits.
-    On high-core systems (256 cores), 104 benchmarks would create ~26,000 fields,
-    exceeding the 1,000 field limit. By splitting into separate documents,
-    each document has only ~250 fields.
+    PyPerf indexes all benchmarks in a single document with schema versioning
+    to support future benchmark evolution (tests added/removed) without
+    invalidating historical data comparisons.
     """
 
     def get_test_name(self) -> str:
         return "pyperf"
 
-    def process_multiple(self) -> List[ZathrasDocument]:
-        """
-        Process PyPerf results into multiple documents (one per benchmark).
-
-        This overrides the default process() method to create one document
-        per benchmark instead of one document with all benchmarks.
-
-        Returns:
-            List of ZathrasDocument objects, one per benchmark
-        """
-        logger.info(f"Processing {self.get_test_name()} results (multi-document mode)...")
-
-        documents = []
-
-        try:
-            # Build common sections (shared across all benchmarks)
-            base_metadata = self.build_metadata()
-            test_info = self.build_test_info()
-            sut = self.build_system_under_test()
-            test_config = self.build_test_configuration()
-            runtime_info = self.build_runtime_info()
-
-            # Parse all benchmarks
-            results_obj = self.build_results()
-            if not isinstance(results_obj, Results):
-                logger.error(f"build_results() returned unexpected type: {type(results_obj)}")
-                raise TypeError(f"Expected Results object, got {type(results_obj)}")
-
-            runs = results_obj.runs
-            if not runs:
-                logger.warning("No PyPerf benchmarks found")
-                return []
-
-            # Create one document per benchmark
-            for run_key, run in runs.items():
-                # Create a copy of metadata with benchmark-specific test name
-                benchmark_name = run.metrics.get('benchmark_name', run_key)
-
-                # Create metadata copy for this benchmark
-                from dataclasses import replace
-                metadata = replace(base_metadata)
-                if base_metadata.scenario_name:
-                    scenario = base_metadata.scenario_name or 'pyperf'
-                    metadata.scenario_name = f"{scenario}_{benchmark_name}"
-                else:
-                    metadata.scenario_name = f"pyperf_{benchmark_name}"
-
-                # Create Results object with only this benchmark as run_0
-                single_run_results = Results(
-                    status="PASS",
-                    runs={
-                        "run_0": Run(
-                            run_number=0,
-                            status=run.status,
-                            metrics=run.metrics,
-                            configuration=run.configuration,
-                            timeseries=run.timeseries,
-                            timeseries_summary=run.timeseries_summary,
-                            start_time=run.start_time,
-                            end_time=run.end_time,
-                            duration_seconds=run.duration_seconds,
-                            validation=run.validation
-                        )
-                    }
-                )
-
-                # Add primary metric if available
-                if 'mean_seconds' in run.metrics:
-                    single_run_results.primary_metric = PrimaryMetric(
-                        name='mean',
-                        value=run.metrics['mean_seconds'],
-                        unit='seconds'
-                    )
-
-                # Create document for this benchmark
-                document = ZathrasDocument(
-                    metadata=metadata,
-                    test=test_info,
-                    system_under_test=sut,
-                    test_configuration=test_config,
-                    results=single_run_results,
-                    runtime_info=runtime_info
-                )
-
-                # Calculate content-based hash for this specific benchmark
-                content_hash = document.calculate_content_hash()
-                # Use benchmark name in document ID for readability (same pattern as other tests)
-                document.metadata.document_id = f"pyperf_{benchmark_name}_{content_hash[:16]}"
-
-                documents.append(document)
-
-            logger.info(f"Successfully processed {len(documents)} PyPerf benchmark documents")
-            return documents
-
-        except Exception as e:
-            logger.error(f"Failed to process PyPerf results: {e}")
-            logger.debug(traceback.format_exc())
-            raise
+    def build_test_info(self):
+        """Build test information with schema version for PyPerf"""
+        test_info = super().build_test_info()
+        test_info.schema_version = "1.0"
+        return test_info
 
     def parse_runs(self, extracted_result: Dict[str, Any]) -> Dict[str, Any]:
         """

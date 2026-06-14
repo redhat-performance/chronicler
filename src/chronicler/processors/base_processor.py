@@ -20,7 +20,7 @@ import yaml
 from abc import ABC, abstractmethod
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 from ..schema import (
     ZathrasDocument,
@@ -343,8 +343,8 @@ class BaseProcessor(ABC):
         # Calculate overall statistics
         overall_stats = self._calculate_overall_statistics(runs)
 
-        # Determine primary metric
-        primary_metric = self._extract_primary_metric(runs, overall_stats)
+        # Determine primary metrics
+        primary_metrics = self._extract_primary_metrics(runs, overall_stats)
 
         # Calculate total execution time
         exec_time = self._calculate_execution_time(runs)
@@ -353,7 +353,7 @@ class BaseProcessor(ABC):
             status=status,
             execution_time_seconds=exec_time,
             total_runs=len(runs) if runs else 0,
-            primary_metric=primary_metric,
+            primary_metrics=primary_metrics,
             overall_statistics=overall_stats,
             runs=runs
         )
@@ -409,11 +409,16 @@ class BaseProcessor(ABC):
             sample_count=len(values)
         )
 
-    def _extract_primary_metric(
+    def _extract_primary_metrics(
         self, runs: Dict[str, Any],
         overall_stats: Optional[StatisticalSummary]
-    ) -> Optional[PrimaryMetric]:
-        """Extract primary performance metric"""
+    ) -> Optional[List[PrimaryMetric]]:
+        """
+        Extract primary performance metrics.
+
+        Default implementation returns single-element list with first numeric metric.
+        Multi-metric benchmarks (uperf, FIO, etc.) should override to return multiple metrics.
+        """
         if not runs:
             return None
 
@@ -435,11 +440,11 @@ class BaseProcessor(ABC):
                     # Determine unit from metric name
                     unit = self._guess_unit(metric_name)
 
-                    return PrimaryMetric(
+                    return [PrimaryMetric(
                         name=metric_name,
                         value=value,
                         unit=unit
-                    )
+                    )]
 
         return None
 

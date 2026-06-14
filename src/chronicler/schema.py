@@ -306,7 +306,7 @@ class Results:
     status: str = "UNKNOWN"
     execution_time_seconds: Optional[float] = None
     total_runs: Optional[int] = None
-    primary_metric: Optional[PrimaryMetric] = None
+    primary_metrics: Optional[List[PrimaryMetric]] = None
     overall_statistics: Optional[StatisticalSummary] = None
     runs: Optional[Dict[str, Run]] = None  # run_1, run_2, etc. as keys
 
@@ -317,8 +317,8 @@ class Results:
             result['execution_time_seconds'] = self.execution_time_seconds
         if self.total_runs is not None:
             result['total_runs'] = self.total_runs
-        if self.primary_metric:
-            result['primary_metric'] = self.primary_metric.to_dict()
+        if self.primary_metrics:
+            result['primary_metrics'] = [m.to_dict() for m in self.primary_metrics]
         if self.overall_statistics:
             result['overall_statistics'] = self.overall_statistics.to_dict()
         if self.runs:

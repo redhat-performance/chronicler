@@ -14,7 +14,6 @@ malformed timestamps raise ProcessorError.
 import json
 import re
 import statistics
-import traceback
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 from pathlib import Path
@@ -22,8 +21,7 @@ import logging
 
 from .base_processor import BaseProcessor, ProcessorError
 from ..schema import (
-    Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key,
-    ZathrasDocument, Results, PrimaryMetric
+    Run, TimeSeriesPoint, TimeSeriesSummary, create_run_key, create_sequence_key
 )
 
 logger = logging.getLogger(__name__)

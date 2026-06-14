@@ -102,13 +102,15 @@ class FioProcessor(BaseProcessor):
                 max_bw = bw
                 max_bw_run = run
 
-        # Set primary metric
+        # Set primary metrics (single-element list for now; see issue #27 for multi-metric)
         if max_bw_run and max_bw > 0:
-            results.primary_metric = PrimaryMetric(
-                name='max_bandwidth',
-                value=max_bw,
-                unit='KiB/s'
-            )
+            results.primary_metrics = [
+                PrimaryMetric(
+                    name='max_bandwidth',
+                    value=max_bw,
+                    unit='KiB/s'
+                )
+            ]
 
         return results
 

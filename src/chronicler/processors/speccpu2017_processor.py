@@ -396,10 +396,12 @@ class SpecCPU2017Processor(BaseProcessor):
                 product = reduce(operator.mul, suite_scores, 1)
                 overall_score = product ** (1.0 / len(suite_scores))
 
-                results.primary_metric = PrimaryMetric(
-                    name='spec_score',
-                    value=overall_score,
-                    unit='score'
-                )
+                results.primary_metrics = [
+                    PrimaryMetric(
+                        name='spec_score',
+                        value=overall_score,
+                        unit='score'
+                    )
+                ]
 
         return results

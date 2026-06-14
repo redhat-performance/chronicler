@@ -232,7 +232,7 @@
             "status": {"type": "keyword"},
             "execution_time_seconds": {"type": "float"},
             "total_runs": {"type": "integer"},
-            "primary_metric": {
+            "primary_metrics": {
               "properties": {
                 "name": {"type": "keyword"},
                 "value": {"type": "float"},

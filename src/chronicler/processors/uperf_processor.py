@@ -17,7 +17,7 @@ import statistics
 from .base_processor import BaseProcessor, ProcessorError
 from .timestamp_utils import validate_iso8601_timestamp, interpolate_timestamps
 from .run_utils import run_data_timeseries_to_objects, timeseries_summary_from_metric
-from ..schema import Run, create_run_key, create_sequence_key
+from ..schema import Run, PrimaryMetric, StatisticalSummary, create_run_key, create_sequence_key
 from ..utils.parser_utils import read_file_content
 
 logger = logging.getLogger(__name__)
@@ -488,3 +488,78 @@ class UperfProcessor(BaseProcessor):
             timeseries=timeseries if timeseries else None,
             timeseries_summary=ts_summary
         )
+
+    def _extract_primary_metrics(
+        self, runs: Dict[str, Any],
+        overall_stats: Optional[StatisticalSummary]
+    ) -> Optional[List[PrimaryMetric]]:
+        """
+        Extract throughput, latency, and transaction rate as coequal primary metrics.
+
+        Uperf is a multi-metric benchmark measuring network performance across three
+        dimensions. All three metrics are equally important for characterizing performance.
+
+        Returns list of PrimaryMetric objects for: throughput, latency, transaction_rate.
+        """
+        if not runs:
+            return None
+
+        # Get first run to extract metrics from timeseries
+        first_run = list(runs.values())[0]
+
+        # Handle both dict and Run dataclass objects
+        timeseries = None
+        if isinstance(first_run, dict) and 'timeseries' in first_run:
+            timeseries = first_run['timeseries']
+        elif hasattr(first_run, 'timeseries') and first_run.timeseries:
+            timeseries = first_run.timeseries
+
+        if not timeseries:
+            return None
+
+        # Collect values from all timeseries points
+        throughput_values = []
+        latency_values = []
+        iops_values = []
+
+        for seq_key, ts_point in timeseries.items():
+            metrics = ts_point.metrics if hasattr(ts_point, 'metrics') else ts_point.get('metrics', {})
+
+            if 'throughput_gbps' in metrics and metrics['throughput_gbps'] is not None:
+                throughput_values.append(metrics['throughput_gbps'])
+            if 'latency_usec' in metrics and metrics['latency_usec'] is not None:
+                latency_values.append(metrics['latency_usec'])
+            if 'iops' in metrics and metrics['iops'] is not None:
+                iops_values.append(metrics['iops'])
+
+        # Build list of primary metrics (only include metrics with data)
+        primary_metrics = []
+
+        if throughput_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='throughput',
+                    value=statistics.mean(throughput_values),
+                    unit='Gb/s'
+                )
+            )
+
+        if latency_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='latency',
+                    value=statistics.mean(latency_values),
+                    unit='microseconds'
+                )
+            )
+
+        if iops_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='transaction_rate',
+                    value=statistics.mean(iops_values),
+                    unit='trans/s'
+                )
+            )
+
+        return primary_metrics if primary_metrics else None

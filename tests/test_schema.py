@@ -212,13 +212,14 @@ class TestRun:
 class TestResults:
     """Tests for Results dataclass."""
 
-    def test_to_dict_with_runs(self):
+    def test_to_dict_with_single_primary_metric(self):
+        """Test Results with single-element primary_metrics list."""
         results = Results(
             status="PASS",
             total_runs=2,
-            primary_metric=PrimaryMetric(
-                name="iterations_per_sec", value=195000.0, unit="iter/s"
-            ),
+            primary_metrics=[
+                PrimaryMetric(name="iterations_per_sec", value=195000.0, unit="iter/s")
+            ],
             runs={
                 "run_1": Run(run_number=1, status="PASS"),
                 "run_2": Run(run_number=2, status="PASS"),
@@ -227,9 +228,50 @@ class TestResults:
         d = results.to_dict()
         assert d["status"] == "PASS"
         assert d["total_runs"] == 2
-        assert d["primary_metric"]["value"] == 195000.0
+        assert "primary_metrics" in d
+        assert len(d["primary_metrics"]) == 1
+        assert d["primary_metrics"][0]["name"] == "iterations_per_sec"
+        assert d["primary_metrics"][0]["value"] == 195000.0
+        assert d["primary_metrics"][0]["unit"] == "iter/s"
         assert "run_1" in d["runs"]
         assert "run_2" in d["runs"]
+
+    def test_to_dict_with_multiple_primary_metrics(self):
+        """Test Results with multi-metric list (e.g., uperf)."""
+        results = Results(
+            status="PASS",
+            total_runs=1,
+            primary_metrics=[
+                PrimaryMetric(name="throughput", value=9.5, unit="Gb/s"),
+                PrimaryMetric(name="latency", value=125.3, unit="microseconds"),
+                PrimaryMetric(name="transaction_rate", value=50000, unit="trans/s"),
+            ],
+            runs={
+                "run_1": Run(run_number=1, status="PASS"),
+            },
+        )
+        d = results.to_dict()
+        assert d["status"] == "PASS"
+        assert "primary_metrics" in d
+        assert len(d["primary_metrics"]) == 3
+        # Verify all three metrics are present
+        metric_names = [m["name"] for m in d["primary_metrics"]]
+        assert "throughput" in metric_names
+        assert "latency" in metric_names
+        assert "transaction_rate" in metric_names
+
+    def test_to_dict_with_no_primary_metrics(self):
+        """Test Results with no primary_metrics (optional field)."""
+        results = Results(
+            status="PASS",
+            total_runs=1,
+            runs={
+                "run_1": Run(run_number=1, status="PASS"),
+            },
+        )
+        d = results.to_dict()
+        assert d["status"] == "PASS"
+        assert "primary_metrics" not in d  # Should be excluded when None
 
 
 class TestZathrasDocument:

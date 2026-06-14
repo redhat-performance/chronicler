@@ -98,10 +98,22 @@ class MemoryInfo:
 
 
 @dataclass
+class BIOSInfo:
+    """BIOS firmware information"""
+    vendor: Optional[str] = None
+    version: Optional[str] = None
+    release_date: Optional[str] = None
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {k: v for k, v in asdict(self).items() if v is not None}
+
+
+@dataclass
 class HardwareInfo:
     """Complete hardware information with object-based structure"""
     cpu: Optional[CPUInfo] = None
     memory: Optional[MemoryInfo] = None
+    bios: Optional[BIOSInfo] = None
     numa: Optional[Dict[str, Any]] = None  # node_0, node_1, etc.
     storage: Optional[Dict[str, Any]] = None  # device_0, device_1, etc.
     network: Optional[Dict[str, Any]] = None  # interface_0, interface_1, etc.
@@ -112,6 +124,8 @@ class HardwareInfo:
             result['cpu'] = self.cpu.to_dict()
         if self.memory:
             result['memory'] = self.memory.to_dict()
+        if self.bios:
+            result['bios'] = self.bios.to_dict()
         if self.numa:
             result['numa'] = self.numa
         if self.storage:

@@ -30,6 +30,7 @@ from ..schema import (
     HardwareInfo,
     CPUInfo,
     MemoryInfo,
+    BIOSInfo,
     OperatingSystemInfo,
     ConfigurationInfo,
     TestConfiguration,

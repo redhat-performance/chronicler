@@ -108,7 +108,7 @@ ZathrasDocument
 ├── results                    # Subclass: parse_runs()
 │   ├── status
 │   ├── total_runs
-│   ├── primary_metric
+│   ├── primary_metrics         # List of PrimaryMetric objects
 │   └── runs
 │       ├── run_0
 │       │   ├── run_number
@@ -384,9 +384,10 @@ Run:
 **Data Structure:**
 ```python
 Results:
-  primary_metric:
-    name: "spec_score"
-    value: 958.11  # Geometric mean of both suites
+  primary_metrics:
+    - name: "spec_score"
+      value: 958.11  # Geometric mean of both suites
+      unit: "score"
   runs:
     run_0:  # Integer suite (intrate)
       metrics:

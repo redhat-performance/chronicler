@@ -13,11 +13,14 @@ from chronicler.processors.uperf_processor import UperfProcessor
 pytestmark = pytest.mark.integration
 
 
-def test_uperf_integration_end_to_end(result_dir):
+def test_uperf_processor_multi_metric_extraction(result_dir):
     """
-    End-to-end test: uperf CSV → parsed runs → Results with 3 primary_metrics.
+    Processor-level integration test: uperf CSV → parsed runs → Results with 3 primary_metrics.
 
-    This demonstrates the complete flow for RPOPC-1275.
+    Note: This test mocks archive extraction to focus on processor logic.
+    For true end-to-end testing, use a real results_uperf.zip fixture.
+
+    This demonstrates the complete processing flow for RPOPC-1275.
     """
     # Create realistic uperf CSV with varying workloads
     csv_content = """number_procs,Gb_Sec,trans_sec,lat_usec,test_type,packet_type,packet_size,Start_Date,End_Date

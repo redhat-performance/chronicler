@@ -10,7 +10,7 @@ import pytest
 # Add scripts directory to path to import opensearch_backup
 sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
-from opensearch_backup import build_connection_config, main
+from opensearch_backup import build_connection_config, main, cmd_backup
 
 
 class TestBuildConnectionConfig:
@@ -259,3 +259,130 @@ class TestCLIArguments:
                 assert call_args.password == 'pass'
                 assert call_args.verify_ssl is False
                 assert call_args.timeout == 60
+
+
+class TestBackupCommandIntegration:
+    """Tests for backup command using build_connection_config."""
+
+    def test_backup_uses_cli_args(self, tmp_path, monkeypatch):
+        """Backup command should use CLI args via build_connection_config."""
+        # Change to temp directory to avoid picking up default config
+        monkeypatch.chdir(tmp_path)
+
+        # Create output directory
+        output_dir = tmp_path / 'backups'
+        output_dir.mkdir()
+
+        args = argparse.Namespace(
+            url='https://localhost:9200',
+            username='testuser',
+            password='testpass',
+            verify_ssl=False,
+            timeout=60,
+            config=None,
+            index='zathras-results',
+            output=str(output_dir),
+            compress=True,
+            batch_size=1000,
+            verbose=False
+        )
+
+        # Mock OpenSearchBackup class to avoid actual network calls
+        with patch('opensearch_backup.OpenSearchBackup') as mock_backup_class:
+            mock_backup = MagicMock()
+            mock_backup_class.return_value = mock_backup
+
+            # Mock get_index_stats to return test data
+            mock_backup.get_index_stats.return_value = {
+                'doc_count': 100,
+                'size_bytes': 1024,
+                'size_human': '1.00 KB'
+            }
+
+            # Mock backup_index to return test data
+            mock_backup.backup_index.return_value = {
+                'index': 'zathras-results',
+                'documents': 100,
+                'batches': 1,
+                'file_path': str(output_dir / 'zathras-results_test.ndjson.gz'),
+                'file_size': 512,
+                'compressed': True
+            }
+
+            # Mock user confirmation
+            with patch('opensearch_backup.confirm_action', return_value=True):
+                result = cmd_backup(args)
+
+            # Verify backup utility was initialized with CLI args
+            assert mock_backup_class.called
+            init_call = mock_backup_class.call_args
+            assert init_call[1]['url'] == 'https://localhost:9200'
+            assert init_call[1]['username'] == 'testuser'
+            assert init_call[1]['password'] == 'testpass'
+            assert init_call[1]['verify_ssl'] is False
+            assert init_call[1]['timeout'] == 60
+
+            # Verify backup was successful
+            assert result == 0
+
+    def test_backup_uses_config_file_when_no_cli_args(self, tmp_path):
+        """Backup command should use config file when no CLI args provided."""
+        # Create a config file
+        config_file = tmp_path / 'config.yml'
+        config_file.write_text('''
+opensearch:
+  url: https://config-host:9200
+  username: config_user
+  password: config_pass
+  verify_ssl: true
+  timeout: 45
+''')
+
+        output_dir = tmp_path / 'backups'
+        output_dir.mkdir()
+
+        args = argparse.Namespace(
+            url=None,
+            username=None,
+            password=None,
+            verify_ssl=None,
+            timeout=None,
+            config=config_file,
+            index='zathras-results',
+            output=str(output_dir),
+            compress=True,
+            batch_size=1000,
+            verbose=False
+        )
+
+        with patch('opensearch_backup.OpenSearchBackup') as mock_backup_class:
+            mock_backup = MagicMock()
+            mock_backup_class.return_value = mock_backup
+
+            mock_backup.get_index_stats.return_value = {
+                'doc_count': 100,
+                'size_bytes': 1024,
+                'size_human': '1.00 KB'
+            }
+
+            mock_backup.backup_index.return_value = {
+                'index': 'zathras-results',
+                'documents': 100,
+                'batches': 1,
+                'file_path': str(output_dir / 'zathras-results_test.ndjson.gz'),
+                'file_size': 512,
+                'compressed': True
+            }
+
+            with patch('opensearch_backup.confirm_action', return_value=True):
+                result = cmd_backup(args)
+
+            # Verify backup utility was initialized with config file values
+            init_call = mock_backup_class.call_args
+            assert init_call[1]['url'] == 'https://config-host:9200'
+            assert init_call[1]['username'] == 'config_user'
+            assert init_call[1]['password'] == 'config_pass'
+            assert init_call[1]['verify_ssl'] is True
+            assert init_call[1]['timeout'] == 45
+
+            assert result == 0

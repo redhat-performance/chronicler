@@ -546,8 +546,8 @@ def confirm_action(message: str) -> bool:
 
 def cmd_backup(args):
     """Execute backup command."""
-    # Load config
-    config = load_config(args.config)
+    # Build connection config from CLI args and/or config file
+    config = build_connection_config(args)
 
     # Initialize backup utility
     backup = OpenSearchBackup(

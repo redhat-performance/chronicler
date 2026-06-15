@@ -6,16 +6,26 @@ Backs up and restores data from OpenSearch indices (zathras-results, zathras-tim
 Uses scroll API for efficient backup of large datasets and bulk API for restore.
 
 Usage:
-    # Backup single index
-    ./opensearch_backup.py backup --index zathras-results --output backups/
+    # Backup using config file (traditional method)
+    ./opensearch_backup.py --config config/export_config.yml backup --index both --output backups/
 
-    # Backup both indices
-    ./opensearch_backup.py backup --index both --output backups/
+    # Backup using CLI arguments (no config file needed)
+    ./opensearch_backup.py --url https://localhost:9200 --username user --password pass \\
+        backup --index zathras-results --output backups/
 
-    # Restore from backup
-    ./opensearch_backup.py restore --input backups/zathras-results_20260612.ndjson
+    # Backup with SSL verification disabled
+    ./opensearch_backup.py --url https://localhost:9200 --no-verify-ssl \\
+        backup --index both --output backups/
 
-    # List backups
+    # Restore using CLI arguments
+    ./opensearch_backup.py --url https://localhost:9200 --username user --password pass \\
+        restore --input backups/zathras-results_20260612.ndjson
+
+    # CLI arguments override config file values
+    ./opensearch_backup.py --config config/export_config.yml --timeout 120 \\
+        backup --index both --output backups/
+
+    # List backups (no connection needed)
     ./opensearch_backup.py list --directory backups/
 """
 
@@ -475,6 +485,64 @@ def load_config(config_path: Path) -> Dict[str, Any]:
         sys.exit(1)
 
 
+def build_connection_config(args) -> Dict[str, Any]:
+    """
+    Build OpenSearch connection configuration from CLI args and/or config file.
+
+    CLI arguments take precedence over config file values.
+    At least one of --config or --url must be provided.
+
+    Args:
+        args: Parsed command-line arguments
+
+    Returns:
+        Dict with connection configuration (url, username, password, verify_ssl, timeout)
+
+    Raises:
+        SystemExit: If neither --config nor --url is provided
+    """
+    # Start with empty config
+    config = {}
+
+    # Load from config file if provided (default to config/export_config.yml if not specified)
+    config_path = args.config if args.config else Path('config/export_config.yml')
+
+    if config_path.exists():
+        config = load_config(config_path)
+
+    # Override with CLI arguments (if provided)
+    if args.url is not None:
+        config['url'] = args.url
+
+    if args.username is not None:
+        config['username'] = args.username
+
+    if args.password is not None:
+        config['password'] = args.password
+
+    if args.verify_ssl is not None:
+        config['verify_ssl'] = args.verify_ssl
+
+    if args.timeout is not None:
+        config['timeout'] = args.timeout
+
+    # Validate: must have at least a URL
+    if 'url' not in config:
+        print(
+            "ERROR: No OpenSearch URL provided. Use either:\n"
+            "  --config <path>  (to load from config file)\n"
+            "  --url <url>      (to specify URL directly)\n",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
+    # Apply defaults
+    config.setdefault('verify_ssl', True)
+    config.setdefault('timeout', 30)
+
+    return config
+
+
 def confirm_action(message: str) -> bool:
     """Ask user for confirmation."""
     while True:
@@ -488,8 +556,8 @@ def confirm_action(message: str) -> bool:
 
 def cmd_backup(args):
     """Execute backup command."""
-    # Load config
-    config = load_config(args.config)
+    # Build connection config from CLI args and/or config file
+    config = build_connection_config(args)
 
     # Initialize backup utility
     backup = OpenSearchBackup(
@@ -591,8 +659,8 @@ def cmd_backup(args):
 
 def cmd_restore(args):
     """Execute restore command."""
-    # Load config
-    config = load_config(args.config)
+    # Build connection config from CLI args and/or config file
+    config = build_connection_config(args)
 
     # Initialize backup utility
     backup = OpenSearchBackup(
@@ -700,8 +768,53 @@ def main():
     parser.add_argument(
         '--config',
         type=Path,
-        default=Path('config/export_config.yml'),
+        default=None,
         help='Path to export config file (default: config/export_config.yml)'
+    )
+
+    # Connection parameters (optional - override config file)
+    parser.add_argument(
+        '--url',
+        type=str,
+        default=None,
+        help='OpenSearch URL (e.g., https://localhost:9200)'
+    )
+
+    parser.add_argument(
+        '--username',
+        type=str,
+        default=None,
+        help='Username for basic authentication'
+    )
+
+    parser.add_argument(
+        '--password',
+        type=str,
+        default=None,
+        help='Password for basic authentication'
+    )
+
+    ssl_group = parser.add_mutually_exclusive_group()
+    ssl_group.add_argument(
+        '--verify-ssl',
+        action='store_true',
+        dest='verify_ssl',
+        default=None,
+        help='Verify SSL certificates (default: true)'
+    )
+
+    ssl_group.add_argument(
+        '--no-verify-ssl',
+        action='store_false',
+        dest='verify_ssl',
+        help='Skip SSL certificate verification'
+    )
+
+    parser.add_argument(
+        '--timeout',
+        type=int,
+        default=None,
+        help='Request timeout in seconds (default: 30)'
     )
 
     parser.add_argument(

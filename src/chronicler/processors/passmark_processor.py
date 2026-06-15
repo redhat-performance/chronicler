@@ -16,7 +16,7 @@ import statistics
 
 from .base_processor import BaseProcessor, ProcessorError
 from .run_utils import run_data_timeseries_to_objects, timeseries_summary_from_metric
-from ..schema import Run, create_run_key, create_sequence_key
+from ..schema import Run, PrimaryMetric, StatisticalSummary, create_run_key, create_sequence_key
 from ..utils.parser_utils import read_file_content
 
 logger = logging.getLogger(__name__)
@@ -270,3 +270,59 @@ class PassmarkProcessor(BaseProcessor):
             timeseries=timeseries if timeseries else None,
             timeseries_summary=ts_summary
         )
+
+    def _extract_primary_metrics(
+        self, runs: Dict[str, Any],
+        overall_stats: Optional[StatisticalSummary]
+    ) -> Optional[List[PrimaryMetric]]:
+        """
+        Extract CPU Mark and Memory Mark as coequal primary metrics.
+
+        Passmark is a multi-metric benchmark reporting two key performance scores:
+        - CPU Mark: SUMM_CPU_mean from aggregated CPU benchmark results
+        - Memory Mark: SUMM_ME_mean from aggregated memory benchmark results
+
+        Both metrics are important for system characterization.
+
+        Returns list of PrimaryMetric objects for both metrics.
+        """
+        if not runs:
+            return None
+
+        # Get first run to extract metrics
+        first_run = list(runs.values())[0]
+
+        # Handle both dict and Run dataclass objects
+        metrics = None
+        if isinstance(first_run, dict) and 'metrics' in first_run:
+            metrics = first_run['metrics']
+        elif hasattr(first_run, 'metrics') and first_run.metrics:
+            metrics = first_run.metrics
+
+        if not metrics:
+            return None
+
+        # Build list of primary metrics
+        primary_metrics = []
+
+        # CPU Mark from SUMM_CPU_mean
+        if 'SUMM_CPU_mean' in metrics and metrics['SUMM_CPU_mean'] is not None:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='CPU Mark',
+                    value=float(metrics['SUMM_CPU_mean']),
+                    unit='score'
+                )
+            )
+
+        # Memory Mark from SUMM_ME_mean
+        if 'SUMM_ME_mean' in metrics and metrics['SUMM_ME_mean'] is not None:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='Memory Mark',
+                    value=float(metrics['SUMM_ME_mean']),
+                    unit='score'
+                )
+            )
+
+        return primary_metrics if primary_metrics else None

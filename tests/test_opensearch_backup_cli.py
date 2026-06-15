@@ -261,6 +261,107 @@ class TestCLIArguments:
                 assert call_args.timeout == 60
 
 
+class TestRestoreFilenameParser:
+    """Tests for restore command filename parsing logic."""
+
+    def test_parse_filename_with_date_and_time_timestamp(self):
+        """Should correctly strip _YYYYMMDD_HHMMSS timestamp from filename."""
+        from opensearch_backup import parse_index_from_filename
+
+        # Standard backup filename format
+        result = parse_index_from_filename('zathras-results_20260614_194102.ndjson.gz')
+        assert result == 'zathras-results'
+
+    def test_parse_filename_with_timestamp_no_compression(self):
+        """Should handle non-compressed files with timestamp."""
+        from opensearch_backup import parse_index_from_filename
+
+        result = parse_index_from_filename('zathras-timeseries_20231225_093045.ndjson')
+        assert result == 'zathras-timeseries'
+
+    def test_parse_filename_without_timestamp(self):
+        """Should return filename as-is when no timestamp pattern found."""
+        from opensearch_backup import parse_index_from_filename
+
+        result = parse_index_from_filename('my-custom-index.ndjson.gz')
+        assert result == 'my-custom-index'
+
+    def test_parse_filename_with_underscores_in_index_name(self):
+        """Should preserve underscores in index name while stripping timestamp."""
+        from opensearch_backup import parse_index_from_filename
+
+        result = parse_index_from_filename('my_complex_index_name_20260101_120000.ndjson.gz')
+        assert result == 'my_complex_index_name'
+
+    def test_parse_filename_with_partial_timestamp(self):
+        """Should not strip malformed timestamp patterns."""
+        from opensearch_backup import parse_index_from_filename
+
+        # Only date, no time
+        result = parse_index_from_filename('index_20260614.ndjson.gz')
+        assert result == 'index_20260614'
+
+        # Invalid date format
+        result = parse_index_from_filename('index_2026614_194102.ndjson.gz')
+        assert result == 'index_2026614_194102'
+
+    def test_parse_filename_edge_case_timestamp_in_index_name(self):
+        """Should only strip timestamp at end of filename, not in middle."""
+        from opensearch_backup import parse_index_from_filename
+
+        # Index name contains digits that look like timestamp
+        result = parse_index_from_filename('backup_20260614_194102_data_20260615_120000.ndjson.gz')
+        assert result == 'backup_20260614_194102_data'
+
+
+class TestRestoreCommandIntegration:
+    """Tests for restore command using parse_index_from_filename."""
+
+    def test_restore_infers_index_from_filename_with_timestamp(self, tmp_path, monkeypatch):
+        """Restore should correctly infer index name from timestamped filename."""
+        monkeypatch.chdir(tmp_path)
+
+        # Create a mock backup file
+        backup_file = tmp_path / 'zathras-results_20260614_194102.ndjson.gz'
+        backup_file.write_text('{"_id": "1", "_source": {"test": "data"}}\n')
+
+        args = argparse.Namespace(
+            url='https://localhost:9200',
+            username='testuser',
+            password='testpass',
+            verify_ssl=False,
+            timeout=60,
+            config=None,
+            input=str(backup_file),
+            index=None,  # Not provided - should infer from filename
+            bulk_size=500,
+            verbose=False
+        )
+
+        from opensearch_backup import cmd_restore
+
+        with patch('opensearch_backup.OpenSearchBackup') as mock_backup_class:
+            mock_backup = MagicMock()
+            mock_backup_class.return_value = mock_backup
+
+            mock_backup.restore_index.return_value = {
+                'index': 'zathras-results',
+                'documents_restored': 1,
+                'documents_failed': 0,
+                'batches': 1
+            }
+
+            with patch('opensearch_backup.confirm_action', return_value=True):
+                result = cmd_restore(args)
+
+            # Verify restore was called with correctly parsed index name
+            assert mock_backup.restore_index.called
+            restore_call = mock_backup.restore_index.call_args
+            assert restore_call[1]['index'] == 'zathras-results'  # Not 'zathras-results_20260614'
+
+            assert result == 0
+
+
 class TestBackupCommandIntegration:
     """Tests for backup command using build_connection_config."""
 

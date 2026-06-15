@@ -8,7 +8,7 @@ import logging
 
 from .base_processor import BaseProcessor, ProcessorError
 from ..schema import (
-    Run, TimeSeriesPoint, TimeSeriesSummary, PrimaryMetric,
+    Run, TimeSeriesPoint, TimeSeriesSummary, PrimaryMetric, StatisticalSummary,
     create_run_key, create_sequence_key
 )
 from ..utils.parser_utils import (
@@ -77,42 +77,78 @@ class FioProcessor(BaseProcessor):
     def get_test_name(self) -> str:
         return "fio"
 
-    def build_results(self) -> Any:
+    def _extract_primary_metrics(
+        self, runs: Dict[str, Any],
+        overall_stats: Optional[StatisticalSummary]
+    ) -> Optional[List[PrimaryMetric]]:
         """
-        Build Results object with overall primary metric.
+        Extract bandwidth, IOPS, and latency as coequal primary metrics.
 
-        Primary metric is the maximum bandwidth achieved across all workloads.
+        FIO is a multi-metric benchmark measuring disk I/O performance across three
+        dimensions. All three metrics are equally important for characterizing performance.
 
-        Returns:
-            Results object
+        Returns list of PrimaryMetric objects for: bandwidth, iops, latency.
         """
-        # Call parent to build basic Results object
-        results = super().build_results()
+        if not runs:
+            return None
 
-        if not results or not results.runs:
-            return results
+        # Collect metric values from all runs
+        bandwidth_values = []
+        iops_values = []
+        latency_values = []
 
-        # Find the run with the highest bandwidth
-        max_bw = 0
-        max_bw_run = None
+        for run_key, run in runs.items():
+            # Handle both dict and Run dataclass objects
+            metrics = None
+            if isinstance(run, dict) and 'metrics' in run:
+                metrics = run['metrics']
+            elif hasattr(run, 'metrics') and run.metrics:
+                metrics = run.metrics
 
-        for run_key, run in results.runs.items():
-            bw = run.metrics.get('total_bandwidth_kbps', 0)
-            if bw > max_bw:
-                max_bw = bw
-                max_bw_run = run
+            if metrics:
+                # Extract bandwidth
+                if 'total_bandwidth_kbps' in metrics and metrics['total_bandwidth_kbps'] is not None:
+                    bandwidth_values.append(metrics['total_bandwidth_kbps'])
 
-        # Set primary metrics (single-element list for now; see issue #27 for multi-metric)
-        if max_bw_run and max_bw > 0:
-            results.primary_metrics = [
+                # Extract IOPS
+                if 'total_iops' in metrics and metrics['total_iops'] is not None:
+                    iops_values.append(metrics['total_iops'])
+
+                # Extract latency
+                if 'avg_latency_mean_ns' in metrics and metrics['avg_latency_mean_ns'] is not None:
+                    latency_values.append(metrics['avg_latency_mean_ns'])
+
+        # Build list of primary metrics (only include metrics with data)
+        primary_metrics = []
+
+        if bandwidth_values:
+            primary_metrics.append(
                 PrimaryMetric(
-                    name='max_bandwidth',
-                    value=max_bw,
+                    name='bandwidth',
+                    value=statistics.mean(bandwidth_values),
                     unit='KiB/s'
                 )
-            ]
+            )
 
-        return results
+        if iops_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='iops',
+                    value=statistics.mean(iops_values),
+                    unit='IOPS'
+                )
+            )
+
+        if latency_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='latency',
+                    value=statistics.mean(latency_values),
+                    unit='nanoseconds'
+                )
+            )
+
+        return primary_metrics if primary_metrics else None
 
     def parse_runs(self, extracted_result: Dict[str, Any]) -> Dict[str, Any]:
         """

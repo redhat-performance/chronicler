@@ -565,6 +565,9 @@ def parse_index_from_filename(filename: str) -> str:
 
     # Remove timestamp pattern _YYYYMMDD_HHMMSS from end of filename
     # Pattern: underscore + 8 digits + underscore + 6 digits at end of string
+    # NOTE: The backup script has always used _YYYYMMDD_HHMMSS format since initial
+    # implementation (strftime('%Y%m%d_%H%M%S')). Both components are required -
+    # partial timestamps are not stripped to avoid incorrect parsing.
     filename = re.sub(r'_\d{8}_\d{6}$', '', filename)
 
     return filename

@@ -261,6 +261,59 @@ class TestCLIArguments:
                 assert call_args.timeout == 60
 
 
+class TestRestoreFilenameParser:
+    """Tests for restore command filename parsing logic."""
+
+    def test_parse_filename_with_date_and_time_timestamp(self):
+        """Should correctly strip _YYYYMMDD_HHMMSS timestamp from filename."""
+        from opensearch_backup import parse_index_from_filename
+
+        # Standard backup filename format
+        result = parse_index_from_filename('zathras-results_20260614_194102.ndjson.gz')
+        assert result == 'zathras-results'
+
+    def test_parse_filename_with_timestamp_no_compression(self):
+        """Should handle non-compressed files with timestamp."""
+        from opensearch_backup import parse_index_from_filename
+
+        result = parse_index_from_filename('zathras-timeseries_20231225_093045.ndjson')
+        assert result == 'zathras-timeseries'
+
+    def test_parse_filename_without_timestamp(self):
+        """Should return filename as-is when no timestamp pattern found."""
+        from opensearch_backup import parse_index_from_filename
+
+        result = parse_index_from_filename('my-custom-index.ndjson.gz')
+        assert result == 'my-custom-index'
+
+    def test_parse_filename_with_underscores_in_index_name(self):
+        """Should preserve underscores in index name while stripping timestamp."""
+        from opensearch_backup import parse_index_from_filename
+
+        result = parse_index_from_filename('my_complex_index_name_20260101_120000.ndjson.gz')
+        assert result == 'my_complex_index_name'
+
+    def test_parse_filename_with_partial_timestamp(self):
+        """Should not strip malformed timestamp patterns."""
+        from opensearch_backup import parse_index_from_filename
+
+        # Only date, no time
+        result = parse_index_from_filename('index_20260614.ndjson.gz')
+        assert result == 'index_20260614'
+
+        # Invalid date format
+        result = parse_index_from_filename('index_2026614_194102.ndjson.gz')
+        assert result == 'index_2026614_194102'
+
+    def test_parse_filename_edge_case_timestamp_in_index_name(self):
+        """Should only strip timestamp at end of filename, not in middle."""
+        from opensearch_backup import parse_index_from_filename
+
+        # Index name contains digits that look like timestamp
+        result = parse_index_from_filename('backup_20260614_194102_data_20260615_120000.ndjson.gz')
+        assert result == 'backup_20260614_194102_data'
+
+
 class TestBackupCommandIntegration:
     """Tests for backup command using build_connection_config."""
 

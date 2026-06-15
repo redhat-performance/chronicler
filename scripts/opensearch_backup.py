@@ -34,6 +34,7 @@ import base64
 import gzip
 import json
 import logging
+import re
 import ssl
 import sys
 import urllib.error
@@ -541,6 +542,32 @@ def build_connection_config(args) -> Dict[str, Any]:
     config.setdefault('timeout', 30)
 
     return config
+
+
+def parse_index_from_filename(filename: str) -> str:
+    """
+    Parse index name from backup filename by stripping timestamp pattern.
+
+    Backup filenames follow the format: {index}_{YYYYMMDD}_{HHMMSS}.ndjson[.gz]
+    This function removes the timestamp suffix to extract the original index name.
+
+    Args:
+        filename: Backup filename (e.g., 'zathras-results_20260614_194102.ndjson.gz')
+
+    Returns:
+        Index name with timestamp stripped (e.g., 'zathras-results')
+    """
+    # Remove file extensions (.ndjson.gz or .ndjson)
+    if filename.endswith('.ndjson.gz'):
+        filename = filename[:-10]
+    elif filename.endswith('.ndjson'):
+        filename = filename[:-7]
+
+    # Remove timestamp pattern _YYYYMMDD_HHMMSS from end of filename
+    # Pattern: underscore + 8 digits + underscore + 6 digits at end of string
+    filename = re.sub(r'_\d{8}_\d{6}$', '', filename)
+
+    return filename
 
 
 def confirm_action(message: str) -> bool:

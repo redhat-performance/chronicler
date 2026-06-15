@@ -649,8 +649,8 @@ def cmd_backup(args):
 
 def cmd_restore(args):
     """Execute restore command."""
-    # Load config
-    config = load_config(args.config)
+    # Build connection config from CLI args and/or config file
+    config = build_connection_config(args)
 
     # Initialize backup utility
     backup = OpenSearchBackup(

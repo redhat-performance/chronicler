@@ -9,6 +9,7 @@ Processes STREAMS results including:
 """
 
 import re
+import statistics
 from typing import Dict, Any, Optional, List
 from pathlib import Path
 import logging
@@ -16,7 +17,7 @@ import logging
 from .base_processor import BaseProcessor, ProcessorError
 from .timestamp_utils import validate_iso8601_timestamp, interpolate_timestamps
 from .run_utils import run_data_timeseries_to_objects
-from ..schema import Run, TimeSeriesPoint, create_run_key, create_sequence_key
+from ..schema import Run, TimeSeriesPoint, PrimaryMetric, StatisticalSummary, create_run_key, create_sequence_key
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +32,92 @@ class StreamsProcessor(BaseProcessor):
 
     def get_test_name(self) -> str:
         return "streams"
+
+    def _extract_primary_metrics(
+        self, runs: Dict[str, Any],
+        overall_stats: Optional[StatisticalSummary]
+    ) -> Optional[List[PrimaryMetric]]:
+        """
+        Extract Copy, Scale, Add, and Triad as coequal primary metrics.
+
+        STREAM measures memory bandwidth across four different operations.
+        All four operations are equally important for characterizing memory performance.
+
+        Returns list of PrimaryMetric objects for: copy, scale, add, triad.
+        """
+        if not runs:
+            return None
+
+        # Collect metric values for each operation from all runs
+        copy_values = []
+        scale_values = []
+        add_values = []
+        triad_values = []
+
+        for run_key, run in runs.items():
+            # Handle both dict and Run dataclass objects
+            metrics = None
+            if isinstance(run, dict) and 'metrics' in run:
+                metrics = run['metrics']
+            elif hasattr(run, 'metrics') and run.metrics:
+                metrics = run.metrics
+
+            if metrics:
+                # Extract all metrics for each operation across all array sizes
+                # Metric names are formatted as: {operation}_{arraysize}_mb_per_sec
+                for metric_name, value in metrics.items():
+                    if value is None:
+                        continue
+
+                    if metric_name.startswith('copy_') and metric_name.endswith('_mb_per_sec'):
+                        copy_values.append(value)
+                    elif metric_name.startswith('scale_') and metric_name.endswith('_mb_per_sec'):
+                        scale_values.append(value)
+                    elif metric_name.startswith('add_') and metric_name.endswith('_mb_per_sec'):
+                        add_values.append(value)
+                    elif metric_name.startswith('triad_') and metric_name.endswith('_mb_per_sec'):
+                        triad_values.append(value)
+
+        # Build list of primary metrics (only include operations with data)
+        primary_metrics = []
+
+        if copy_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='copy',
+                    value=statistics.mean(copy_values),
+                    unit='MB/s'
+                )
+            )
+
+        if scale_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='scale',
+                    value=statistics.mean(scale_values),
+                    unit='MB/s'
+                )
+            )
+
+        if add_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='add',
+                    value=statistics.mean(add_values),
+                    unit='MB/s'
+                )
+            )
+
+        if triad_values:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='triad',
+                    value=statistics.mean(triad_values),
+                    unit='MB/s'
+                )
+            )
+
+        return primary_metrics if primary_metrics else None
 
     def parse_runs(self, extracted_result: Dict[str, Any]) -> Dict[str, Any]:
         """

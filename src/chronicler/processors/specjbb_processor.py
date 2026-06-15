@@ -18,7 +18,7 @@ import logging
 
 from .base_processor import BaseProcessor, ProcessorError
 from .timestamp_utils import validate_iso8601_timestamp
-from ..schema import Run, TimeSeriesPoint, create_run_key, create_sequence_key
+from ..schema import Run, TimeSeriesPoint, PrimaryMetric, StatisticalSummary, create_run_key, create_sequence_key
 
 logger = logging.getLogger(__name__)
 
@@ -340,3 +340,59 @@ class SpecJBBProcessor(BaseProcessor):
             configuration=config,
             timeseries=timeseries if timeseries else None
         )
+
+    def _extract_primary_metrics(
+        self, runs: Dict[str, Any],
+        overall_stats: Optional[StatisticalSummary]
+    ) -> Optional[List[PrimaryMetric]]:
+        """
+        Extract Critical-jOPS and Max-jOPS as coequal primary metrics.
+
+        SpecJBB is a multi-metric benchmark reporting two key throughput metrics:
+        - Critical-jOPS: overall_score_bops from detailed .txt file (if available)
+        - Max-jOPS: peak_throughput_bops from CSV warehouse configurations
+
+        Both metrics are important for Java performance characterization.
+
+        Returns list of PrimaryMetric objects for available metrics.
+        """
+        if not runs:
+            return None
+
+        # Get first run to extract metrics
+        first_run = list(runs.values())[0]
+
+        # Handle both dict and Run dataclass objects
+        metrics = None
+        if isinstance(first_run, dict) and 'metrics' in first_run:
+            metrics = first_run['metrics']
+        elif hasattr(first_run, 'metrics') and first_run.metrics:
+            metrics = first_run.metrics
+
+        if not metrics:
+            return None
+
+        # Build list of primary metrics (only include metrics with data)
+        primary_metrics = []
+
+        # Critical-jOPS from overall_score_bops (from .txt file)
+        if 'overall_score_bops' in metrics and metrics['overall_score_bops'] is not None:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='Critical-jOPS',
+                    value=float(metrics['overall_score_bops']),
+                    unit='Bops'
+                )
+            )
+
+        # Max-jOPS from peak_throughput_bops (from CSV)
+        if 'peak_throughput_bops' in metrics and metrics['peak_throughput_bops'] is not None:
+            primary_metrics.append(
+                PrimaryMetric(
+                    name='Max-jOPS',
+                    value=float(metrics['peak_throughput_bops']),
+                    unit='Bops'
+                )
+            )
+
+        return primary_metrics if primary_metrics else None

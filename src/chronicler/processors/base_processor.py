@@ -196,10 +196,42 @@ class BaseProcessor(ABC):
         )
 
     def build_test_info(self) -> TestInfo:
-        """Build test information section"""
+        """
+        Build test information section.
+
+        By default, this method extracts the wrapper version from the test_info
+        file (the orchestrator's test repository version, e.g., "v2.8") and sets
+        BOTH test.version and test.wrapper_version to this same value.
+
+        IMPORTANT: This is intentional base behavior, but often incorrect semantically.
+        For benchmarks with independent versioning (e.g., FIO 3.36, STREAMS 5.10),
+        processors MUST override this method to extract and return the benchmark's
+        own version in test.version while preserving wrapper_version.
+
+        Examples of processors that should override:
+        - FIO: test.version = "fio-3.36", wrapper_version = "v2.1"
+        - STREAMS: test.version = "5.10", wrapper_version = "v2.8"
+        - CoreMark: test.version = "v1.01", wrapper_version = "v2.0"
+
+        See VERSION_CONFLATION_IMPACT.md for full analysis of affected processors.
+
+        Override pattern:
+            def build_test_info(self) -> TestInfo:
+                base_info = super().build_test_info()
+                benchmark_version = self._extract_benchmark_version()
+                return TestInfo(
+                    name=self.get_test_name(),
+                    version=benchmark_version or base_info.version,
+                    wrapper_version=base_info.wrapper_version
+                )
+
+        Returns:
+            TestInfo with name, version (wrapper by default), and wrapper_version
+        """
         test_name = self.get_test_name()
 
-        # Try to get version from test_info file
+        # Extract wrapper version from orchestrator's test_info file
+        # This contains the test wrapper repository version (e.g., "v2.8" from "v2.8.tar.gz")
         test_info_file = self.result_dir / "test_info"
         version = None
 
@@ -211,6 +243,7 @@ class BaseProcessor(ABC):
                 # Find test in test_info
                 for key, test_data in test_info_data.items():
                     if test_data.get('test_name') == test_name:
+                        # Extract wrapper version from repo_file (e.g., "v2.8.tar.gz" -> "v2.8")
                         version = test_data.get('repo_file', '').replace('.tar.gz', '')
                         break
             except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
@@ -218,8 +251,10 @@ class BaseProcessor(ABC):
 
         return TestInfo(
             name=test_name,
-            version=version or "unknown",
-            wrapper_version=version or "unknown"
+            # NOTE: Both fields set to wrapper version by default
+            # Processors with independent benchmark versions MUST override to fix this
+            version=version or "unknown",           # Should be benchmark version (override needed)
+            wrapper_version=version or "unknown"    # Correct: wrapper repository version
         )
 
     def build_system_under_test(self) -> SystemUnderTest:

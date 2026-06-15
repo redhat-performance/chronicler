@@ -494,9 +494,11 @@ def build_connection_config(args) -> Dict[str, Any]:
     # Start with empty config
     config = {}
 
-    # Load from config file if provided
-    if args.config:
-        config = load_config(args.config)
+    # Load from config file if provided (default to config/export_config.yml if not specified)
+    config_path = args.config if args.config else Path('config/export_config.yml')
+
+    if config_path.exists():
+        config = load_config(config_path)
 
     # Override with CLI arguments (if provided)
     if args.url is not None:
@@ -756,8 +758,53 @@ def main():
     parser.add_argument(
         '--config',
         type=Path,
-        default=Path('config/export_config.yml'),
+        default=None,
         help='Path to export config file (default: config/export_config.yml)'
+    )
+
+    # Connection parameters (optional - override config file)
+    parser.add_argument(
+        '--url',
+        type=str,
+        default=None,
+        help='OpenSearch URL (e.g., https://localhost:9200)'
+    )
+
+    parser.add_argument(
+        '--username',
+        type=str,
+        default=None,
+        help='Username for basic authentication'
+    )
+
+    parser.add_argument(
+        '--password',
+        type=str,
+        default=None,
+        help='Password for basic authentication'
+    )
+
+    ssl_group = parser.add_mutually_exclusive_group()
+    ssl_group.add_argument(
+        '--verify-ssl',
+        action='store_true',
+        dest='verify_ssl',
+        default=None,
+        help='Verify SSL certificates (default: true)'
+    )
+
+    ssl_group.add_argument(
+        '--no-verify-ssl',
+        action='store_false',
+        dest='verify_ssl',
+        help='Skip SSL certificate verification'
+    )
+
+    parser.add_argument(
+        '--timeout',
+        type=int,
+        default=None,
+        help='Request timeout in seconds (default: 30)'
     )
 
     parser.add_argument(

@@ -3,14 +3,14 @@
 import argparse
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 # Add scripts directory to path to import opensearch_backup
 sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
-from opensearch_backup import build_connection_config
+from opensearch_backup import build_connection_config, main
 
 
 class TestBuildConnectionConfig:
@@ -97,8 +97,11 @@ opensearch:
         assert config['verify_ssl'] is True
         assert config['timeout'] == 45
 
-    def test_error_when_no_url_provided(self):
-        """Should raise error when neither config nor --url provided."""
+    def test_error_when_no_url_provided(self, tmp_path, monkeypatch):
+        """Should raise error when neither config nor --url provided and default config doesn't exist."""
+        # Change to a temp directory where default config doesn't exist
+        monkeypatch.chdir(tmp_path)
+
         args = argparse.Namespace(
             url=None,
             username=None,
@@ -113,8 +116,11 @@ opensearch:
 
         assert exc_info.value.code == 1
 
-    def test_optional_auth_fields(self):
+    def test_optional_auth_fields(self, tmp_path, monkeypatch):
         """Auth fields should be optional."""
+        # Change to a temp directory where default config doesn't exist
+        monkeypatch.chdir(tmp_path)
+
         args = argparse.Namespace(
             url='https://localhost:9200',
             username=None,
@@ -172,3 +178,84 @@ opensearch:
         config = build_connection_config(args)
 
         assert config['timeout'] == 30
+
+
+class TestCLIArguments:
+    """Tests for CLI argument parsing."""
+
+    def test_url_argument_accepted(self):
+        """Parser should accept --url argument."""
+        with patch('sys.argv', ['opensearch_backup.py', '--url', 'https://localhost:9200', 'backup', '--index', 'zathras-results']):
+            with patch('opensearch_backup.cmd_backup') as mock_cmd:
+                mock_cmd.return_value = 0
+                result = main()
+                assert result == 0
+                # Verify args were passed correctly
+                call_args = mock_cmd.call_args[0][0]
+                assert call_args.url == 'https://localhost:9200'
+
+    def test_username_password_arguments_accepted(self):
+        """Parser should accept --username and --password arguments."""
+        with patch('sys.argv', ['opensearch_backup.py', '--url', 'https://localhost:9200',
+                                '--username', 'testuser', '--password', 'testpass',
+                                'backup', '--index', 'zathras-results']):
+            with patch('opensearch_backup.cmd_backup') as mock_cmd:
+                mock_cmd.return_value = 0
+                result = main()
+                assert result == 0
+                call_args = mock_cmd.call_args[0][0]
+                assert call_args.username == 'testuser'
+                assert call_args.password == 'testpass'
+
+    def test_verify_ssl_flag_accepted(self):
+        """Parser should accept --verify-ssl flag."""
+        with patch('sys.argv', ['opensearch_backup.py', '--url', 'https://localhost:9200',
+                                '--verify-ssl', 'backup', '--index', 'zathras-results']):
+            with patch('opensearch_backup.cmd_backup') as mock_cmd:
+                mock_cmd.return_value = 0
+                result = main()
+                assert result == 0
+                call_args = mock_cmd.call_args[0][0]
+                assert call_args.verify_ssl is True
+
+    def test_no_verify_ssl_flag_accepted(self):
+        """Parser should accept --no-verify-ssl flag."""
+        with patch('sys.argv', ['opensearch_backup.py', '--url', 'https://localhost:9200',
+                                '--no-verify-ssl', 'backup', '--index', 'zathras-results']):
+            with patch('opensearch_backup.cmd_backup') as mock_cmd:
+                mock_cmd.return_value = 0
+                result = main()
+                assert result == 0
+                call_args = mock_cmd.call_args[0][0]
+                assert call_args.verify_ssl is False
+
+    def test_timeout_argument_accepted(self):
+        """Parser should accept --timeout argument."""
+        with patch('sys.argv', ['opensearch_backup.py', '--url', 'https://localhost:9200',
+                                '--timeout', '120', 'backup', '--index', 'zathras-results']):
+            with patch('opensearch_backup.cmd_backup') as mock_cmd:
+                mock_cmd.return_value = 0
+                result = main()
+                assert result == 0
+                call_args = mock_cmd.call_args[0][0]
+                assert call_args.timeout == 120
+
+    def test_all_connection_args_together(self):
+        """Parser should accept all connection arguments together."""
+        with patch('sys.argv', ['opensearch_backup.py',
+                                '--url', 'https://localhost:9200',
+                                '--username', 'user',
+                                '--password', 'pass',
+                                '--no-verify-ssl',
+                                '--timeout', '60',
+                                'backup', '--index', 'zathras-results']):
+            with patch('opensearch_backup.cmd_backup') as mock_cmd:
+                mock_cmd.return_value = 0
+                result = main()
+                assert result == 0
+                call_args = mock_cmd.call_args[0][0]
+                assert call_args.url == 'https://localhost:9200'
+                assert call_args.username == 'user'
+                assert call_args.password == 'pass'
+                assert call_args.verify_ssl is False
+                assert call_args.timeout == 60

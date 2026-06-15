@@ -6,16 +6,26 @@ Backs up and restores data from OpenSearch indices (zathras-results, zathras-tim
 Uses scroll API for efficient backup of large datasets and bulk API for restore.
 
 Usage:
-    # Backup single index
-    ./opensearch_backup.py backup --index zathras-results --output backups/
+    # Backup using config file (traditional method)
+    ./opensearch_backup.py --config config/export_config.yml backup --index both --output backups/
 
-    # Backup both indices
-    ./opensearch_backup.py backup --index both --output backups/
+    # Backup using CLI arguments (no config file needed)
+    ./opensearch_backup.py --url https://localhost:9200 --username user --password pass \\
+        backup --index zathras-results --output backups/
 
-    # Restore from backup
-    ./opensearch_backup.py restore --input backups/zathras-results_20260612.ndjson
+    # Backup with SSL verification disabled
+    ./opensearch_backup.py --url https://localhost:9200 --no-verify-ssl \\
+        backup --index both --output backups/
 
-    # List backups
+    # Restore using CLI arguments
+    ./opensearch_backup.py --url https://localhost:9200 --username user --password pass \\
+        restore --input backups/zathras-results_20260612.ndjson
+
+    # CLI arguments override config file values
+    ./opensearch_backup.py --config config/export_config.yml --timeout 120 \\
+        backup --index both --output backups/
+
+    # List backups (no connection needed)
     ./opensearch_backup.py list --directory backups/
 """
 

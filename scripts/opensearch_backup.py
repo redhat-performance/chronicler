@@ -19,7 +19,7 @@ Usage:
 
     # Restore using CLI arguments
     ./opensearch_backup.py --url https://localhost:9200 --username user --password pass \\
-        restore --input backups/zathras-results_20260612.ndjson
+        restore --input backups/zathras-results_20260612_173217.ndjson.gz
 
     # CLI arguments override config file values
     ./opensearch_backup.py --config config/export_config.yml --timeout 120 \\

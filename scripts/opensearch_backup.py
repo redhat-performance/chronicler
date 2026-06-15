@@ -475,6 +475,62 @@ def load_config(config_path: Path) -> Dict[str, Any]:
         sys.exit(1)
 
 
+def build_connection_config(args) -> Dict[str, Any]:
+    """
+    Build OpenSearch connection configuration from CLI args and/or config file.
+
+    CLI arguments take precedence over config file values.
+    At least one of --config or --url must be provided.
+
+    Args:
+        args: Parsed command-line arguments
+
+    Returns:
+        Dict with connection configuration (url, username, password, verify_ssl, timeout)
+
+    Raises:
+        SystemExit: If neither --config nor --url is provided
+    """
+    # Start with empty config
+    config = {}
+
+    # Load from config file if provided
+    if args.config:
+        config = load_config(args.config)
+
+    # Override with CLI arguments (if provided)
+    if args.url is not None:
+        config['url'] = args.url
+
+    if args.username is not None:
+        config['username'] = args.username
+
+    if args.password is not None:
+        config['password'] = args.password
+
+    if args.verify_ssl is not None:
+        config['verify_ssl'] = args.verify_ssl
+
+    if args.timeout is not None:
+        config['timeout'] = args.timeout
+
+    # Validate: must have at least a URL
+    if 'url' not in config:
+        print(
+            "ERROR: No OpenSearch URL provided. Use either:\n"
+            "  --config <path>  (to load from config file)\n"
+            "  --url <url>      (to specify URL directly)\n",
+            file=sys.stderr
+        )
+        sys.exit(1)
+
+    # Apply defaults
+    config.setdefault('verify_ssl', True)
+    config.setdefault('timeout', 30)
+
+    return config
+
+
 def confirm_action(message: str) -> bool:
     """Ask user for confirmation."""
     while True:

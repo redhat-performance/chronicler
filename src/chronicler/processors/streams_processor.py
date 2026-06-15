@@ -81,41 +81,22 @@ class StreamsProcessor(BaseProcessor):
         # Build list of primary metrics (only include operations with data)
         primary_metrics = []
 
-        if copy_values:
-            primary_metrics.append(
-                PrimaryMetric(
-                    name='copy',
-                    value=statistics.mean(copy_values),
-                    unit='MB/s'
-                )
-            )
+        operations = [
+            ('copy', copy_values),
+            ('scale', scale_values),
+            ('add', add_values),
+            ('triad', triad_values)
+        ]
 
-        if scale_values:
-            primary_metrics.append(
-                PrimaryMetric(
-                    name='scale',
-                    value=statistics.mean(scale_values),
-                    unit='MB/s'
+        for name, values in operations:
+            if values:
+                primary_metrics.append(
+                    PrimaryMetric(
+                        name=name,
+                        value=statistics.mean(values),
+                        unit='MB/s'
+                    )
                 )
-            )
-
-        if add_values:
-            primary_metrics.append(
-                PrimaryMetric(
-                    name='add',
-                    value=statistics.mean(add_values),
-                    unit='MB/s'
-                )
-            )
-
-        if triad_values:
-            primary_metrics.append(
-                PrimaryMetric(
-                    name='triad',
-                    value=statistics.mean(triad_values),
-                    unit='MB/s'
-                )
-            )
 
         return primary_metrics if primary_metrics else None
 

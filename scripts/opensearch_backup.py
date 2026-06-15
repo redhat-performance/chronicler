@@ -709,13 +709,8 @@ def cmd_restore(args):
     if args.index:
         target_index = args.index
     else:
-        # Try to infer from filename
-        filename = input_path.stem
-        if filename.endswith('.ndjson'):
-            filename = filename[:-7]
-        # Remove timestamp if present
-        parts = filename.rsplit('_', 1)
-        target_index = parts[0]
+        # Infer from filename using parse_index_from_filename
+        target_index = parse_index_from_filename(input_path.name)
 
     print("\n" + "=" * 70)
     print("RESTORE CONFIRMATION")

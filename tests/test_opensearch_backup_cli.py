@@ -314,6 +314,54 @@ class TestRestoreFilenameParser:
         assert result == 'backup_20260614_194102_data'
 
 
+class TestRestoreCommandIntegration:
+    """Tests for restore command using parse_index_from_filename."""
+
+    def test_restore_infers_index_from_filename_with_timestamp(self, tmp_path, monkeypatch):
+        """Restore should correctly infer index name from timestamped filename."""
+        monkeypatch.chdir(tmp_path)
+
+        # Create a mock backup file
+        backup_file = tmp_path / 'zathras-results_20260614_194102.ndjson.gz'
+        backup_file.write_text('{"_id": "1", "_source": {"test": "data"}}\n')
+
+        args = argparse.Namespace(
+            url='https://localhost:9200',
+            username='testuser',
+            password='testpass',
+            verify_ssl=False,
+            timeout=60,
+            config=None,
+            input=str(backup_file),
+            index=None,  # Not provided - should infer from filename
+            bulk_size=500,
+            verbose=False
+        )
+
+        from opensearch_backup import cmd_restore
+
+        with patch('opensearch_backup.OpenSearchBackup') as mock_backup_class:
+            mock_backup = MagicMock()
+            mock_backup_class.return_value = mock_backup
+
+            mock_backup.restore_index.return_value = {
+                'index': 'zathras-results',
+                'documents_restored': 1,
+                'documents_failed': 0,
+                'batches': 1
+            }
+
+            with patch('opensearch_backup.confirm_action', return_value=True):
+                result = cmd_restore(args)
+
+            # Verify restore was called with correctly parsed index name
+            assert mock_backup.restore_index.called
+            restore_call = mock_backup.restore_index.call_args
+            assert restore_call[1]['index'] == 'zathras-results'  # Not 'zathras-results_20260614'
+
+            assert result == 0
+
+
 class TestBackupCommandIntegration:
     """Tests for backup command using build_connection_config."""
 

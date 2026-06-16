@@ -11,6 +11,7 @@ CoreMark produces:
 - tuned_setting - System tuning applied
 """
 
+import re
 import statistics
 from typing import Dict, Any, List, Optional
 import logging
@@ -136,9 +137,6 @@ class CoreMarkProcessor(BaseProcessor):
         Looks for pattern: # Results version: v1.01
         Sets self._benchmark_version if found.
         """
-        import re
-        from pathlib import Path
-
         try:
             with open(csv_file, 'r') as f:
                 for line in f:

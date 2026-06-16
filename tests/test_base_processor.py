@@ -106,3 +106,51 @@ def test_build_test_info_handles_malformed_json(tmp_path):
     # Verify
     assert result.version == "unknown"
     assert result.wrapper_version == "unknown"
+
+
+def test_build_test_info_handles_non_string_repo_file(tmp_path):
+    """
+    Non-string repo_file values should be handled gracefully.
+
+    If test_info contains valid JSON but repo_file is null, an integer,
+    or other non-string value, the processor should handle it gracefully
+    rather than raising AttributeError.
+    """
+    # Setup: Create test_info with null repo_file
+    test_info_data = {
+        "minimal_test": {
+            "test_name": "minimal_test",
+            "repo_file": None
+        }
+    }
+    test_info_file = tmp_path / "test_info"
+    test_info_file.write_text(json.dumps(test_info_data))
+
+    # Execute
+    processor = MinimalProcessor(str(tmp_path))
+    result = processor.build_test_info()
+
+    # Verify - should fall back to "unknown" rather than crash
+    assert result.version == "unknown"
+    assert result.wrapper_version == "unknown"
+
+
+def test_build_test_info_handles_non_dict_test_info(tmp_path):
+    """
+    Non-dict test_info data should be handled gracefully.
+
+    If test_info contains a list or other non-dict structure,
+    the processor should handle it gracefully rather than raising
+    AttributeError when calling .items().
+    """
+    # Setup: Create test_info with list instead of dict
+    test_info_file = tmp_path / "test_info"
+    test_info_file.write_text("[]")
+
+    # Execute
+    processor = MinimalProcessor(str(tmp_path))
+    result = processor.build_test_info()
+
+    # Verify - should fall back to "unknown" rather than crash
+    assert result.version == "unknown"
+    assert result.wrapper_version == "unknown"

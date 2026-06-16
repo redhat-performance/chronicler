@@ -30,8 +30,30 @@ def _validate_streams_timestamp(value: str, context: str) -> str:
 class StreamsProcessor(BaseProcessor):
     """Processor for STREAMS memory bandwidth benchmark results."""
 
+    def __init__(self, result_dir):
+        super().__init__(result_dir)
+        self._benchmark_version: Optional[str] = None
+
     def get_test_name(self) -> str:
         return "streams"
+
+    def build_test_info(self):
+        """Override to use benchmark version from CSV instead of wrapper version.
+
+        Extracts STREAMS benchmark version from CSV metadata comment
+        (e.g., "# streams_version_# 5.10") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._benchmark_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
+        )
 
     def _extract_primary_metrics(
         self, runs: Dict[str, Any],
@@ -194,6 +216,14 @@ class StreamsProcessor(BaseProcessor):
                 # End of run block
                 if current_opt_level and run_key and run_key in runs and len(runs[run_key]["metrics"]) > 0:
                     run_number += 1
+                continue
+
+            # Extract benchmark version from CSV comment
+            if line_stripped.startswith('#') and 'streams_version_#' in line_stripped:
+                if self._benchmark_version is None:  # Use first occurrence only
+                    match = re.search(r'streams_version_#\s+(\S+)', line_stripped)
+                    if match:
+                        self._benchmark_version = match.group(1)
                 continue
 
             # Extract optimization level from comments

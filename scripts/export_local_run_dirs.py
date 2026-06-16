@@ -116,12 +116,13 @@ def export_local_run_dirs(
     logger.info(f"Querying index '{index}' for unique local_run_dir values...")
 
     # Build aggregation query to get unique local_run_dir values
+    # Note: field is already mapped as keyword type, so no .keyword suffix needed
     query = {
         'size': 0,  # Don't need document hits, only aggregations
         'aggs': {
             'unique_local_run_dirs': {
                 'terms': {
-                    'field': 'test_configuration.parameters.local_run_dir.keyword',
+                    'field': 'test_configuration.parameters.local_run_dir',
                     'size': max_buckets,
                     'order': {'_key': 'asc'}  # Sort alphabetically
                 }

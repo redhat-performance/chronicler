@@ -140,6 +140,8 @@ class TestExportLocalRunDirs:
         call_args = mock_opensearch._make_request.call_args
         assert call_args[0][0] == '/zathras-results/_search'
         assert 'aggs' in call_args[1]['data']
+        # Verify field name (no .keyword suffix since field is already keyword type)
+        assert call_args[1]['data']['aggs']['unique_local_run_dirs']['terms']['field'] == 'test_configuration.parameters.local_run_dir'
 
         # Verify CSV file was created with correct content
         assert output_file.exists()

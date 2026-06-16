@@ -59,8 +59,30 @@ def _validate_passmark_timestamp(value: Any, context: str) -> str:
 class PassmarkProcessor(BaseProcessor):
     """Processor for Passmark PerformanceTest benchmark results."""
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._passmark_version = None  # Stores benchmark version extracted from YML
+
     def get_test_name(self) -> str:
         return "passmark"
+
+    def build_test_info(self):
+        """Override to use benchmark version from YML instead of wrapper version.
+
+        Extracts Passmark benchmark version from YML Version block
+        (e.g., Major: 11, Minor: 0, Build: 1002 -> "11.0.1002") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._passmark_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
+        )
 
     def parse_runs(self, extracted_result: Dict[str, Any]) -> Dict[str, Run]:
         """
@@ -80,6 +102,9 @@ class PassmarkProcessor(BaseProcessor):
         Returns:
             A dictionary of Run objects, keyed by run_key (typically just "run_0").
         """
+        # Reset state to prevent leakage between parse calls
+        self._passmark_version = None
+
         results_files: List[Path] = []
         files = extracted_result.get("files") or {}
         results_yml = files.get("results_yml")
@@ -248,7 +273,13 @@ class PassmarkProcessor(BaseProcessor):
                     major = version.get('Major', 0)
                     minor = version.get('Minor', 0)
                     build = version.get('Build', 0)
-                    run_data["configuration"]["version"] = f"{major}.{minor}.{build}"
+                    # Only store if we have a valid version (not all zeros)
+                    if major or minor or build:
+                        version_str = f"{major}.{minor}.{build}"
+                        run_data["configuration"]["version"] = version_str
+                        # Store benchmark version for use in build_test_info()
+                        if not self._passmark_version:
+                            self._passmark_version = version_str
 
         return run_data
 

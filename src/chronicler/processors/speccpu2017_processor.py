@@ -34,8 +34,30 @@ class SpecCPU2017Processor(BaseProcessor):
     This processor creates one document with two runs (one per suite).
     """
 
+    def __init__(self, result_directory: str):
+        super().__init__(result_directory)
+        self._speccpu_version = None  # Stores benchmark version from version file
+
     def get_test_name(self) -> str:
         return "speccpu2017"
+
+    def build_test_info(self):
+        """Override to use benchmark version from version file instead of wrapper version.
+
+        Extracts SPEC CPU 2017 benchmark version from version file
+        (e.g., "1.1.9") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._speccpu_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
+        )
 
     def parse_runs(self, extracted_result: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -57,6 +79,9 @@ class SpecCPU2017Processor(BaseProcessor):
                 }
             }
         """
+        # Reset benchmark version state to prevent stale version from previous parse
+        self._speccpu_version = None
+
         files = extracted_result.get("files") or {}
         result_dir = Path(extracted_result.get("extracted_path") or ".")
 
@@ -109,6 +134,9 @@ class SpecCPU2017Processor(BaseProcessor):
         # Parse version (from result_dir when available)
         version_file = result_dir / "version"
         version = parse_version_file(version_file) if version_file.exists() else None
+        # Store benchmark version for use in build_test_info()
+        if version:
+            self._speccpu_version = version
 
         # Parse test status
         status_file = result_dir / "test_results_report"

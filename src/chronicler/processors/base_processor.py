@@ -243,10 +243,20 @@ class BaseProcessor(ABC):
                 # Find test in test_info
                 for key, test_data in test_info_data.items():
                     if test_data.get('test_name') == test_name:
-                        # Extract wrapper version from repo_file (e.g., "v2.8.tar.gz" -> "v2.8")
-                        version = test_data.get('repo_file', '').replace('.tar.gz', '')
+                        # Extract wrapper version from repo_file
+                        # Handle various archive extensions (.tar.gz, .tar.xz, .zip, etc.)
+                        repo_file = test_data.get('repo_file', '')
+                        if isinstance(repo_file, str):
+                            # Strip common archive extensions
+                            for ext in ['.tar.gz', '.tar.xz', '.tar.bz2', '.zip', '.tgz']:
+                                if repo_file.endswith(ext):
+                                    version = repo_file[:-len(ext)]
+                                    break
+                            else:
+                                # No known extension found, use as-is
+                                version = repo_file if repo_file else None
                         break
-            except (OSError, json.JSONDecodeError, KeyError, TypeError) as e:
+            except (OSError, json.JSONDecodeError, KeyError, TypeError, AttributeError) as e:
                 logger.warning(f"Failed to parse test_info: {e}")
 
         return TestInfo(

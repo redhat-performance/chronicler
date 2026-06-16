@@ -11,6 +11,7 @@ CoreMark produces:
 - tuned_setting - System tuning applied
 """
 
+import re
 import statistics
 from typing import Dict, Any, List, Optional
 import logging
@@ -29,6 +30,10 @@ logger = logging.getLogger(__name__)
 
 class CoreMarkProcessor(BaseProcessor):
     """Processor for CoreMark benchmark results"""
+
+    def __init__(self, result_directory: str):
+        super().__init__(result_directory)
+        self._benchmark_version = None  # Stores benchmark version from CSV comments
 
     def get_test_name(self) -> str:
         return "coremark"
@@ -54,12 +59,18 @@ class CoreMarkProcessor(BaseProcessor):
                 "run_2": {...}
             }
         """
+        # Reset benchmark version state to prevent stale version from previous parse
+        self._benchmark_version = None
+
         files = extracted_result['files']
 
         # Parse CSV time series (comma-delimited with Start_Date/End_Date; comment lines skipped)
         csv_file = files.get('results_csv')
         time_series_data = []
         if csv_file:
+            # Extract benchmark version from CSV comments before parsing
+            self._extract_benchmark_version_from_csv(csv_file)
+
             time_series_data = parse_csv_timeseries(
                 csv_file, delimiter=',', skip_comments=True
             )
@@ -118,6 +129,43 @@ class CoreMarkProcessor(BaseProcessor):
 
         logger.info(f"Parsed {len(runs)} CoreMark runs")
         return runs
+
+    def _extract_benchmark_version_from_csv(self, csv_file: str) -> None:
+        """
+        Extract CoreMark benchmark version from CSV comments.
+
+        Looks for pattern: # Results version: v1.01
+        Sets self._benchmark_version if found.
+        """
+        try:
+            with open(csv_file, 'r') as f:
+                for line in f:
+                    if line.startswith('#') and 'Results version:' in line:
+                        match = re.search(r'Results version:\s*(\S+)', line)
+                        if match:
+                            self._benchmark_version = match.group(1)
+                            logger.debug(f"Extracted CoreMark version: {self._benchmark_version}")
+                            return
+        except Exception as e:
+            logger.warning(f"Failed to extract benchmark version from {csv_file}: {e}")
+
+    def build_test_info(self):
+        """Override to use benchmark version from CSV instead of wrapper version.
+
+        Extracts CoreMark benchmark version from CSV comments
+        (e.g., "# Results version: v1.01") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._benchmark_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
+        )
 
     def _group_time_series_by_run(self, time_series_data: List[Dict]) -> List[List[Dict]]:
         """

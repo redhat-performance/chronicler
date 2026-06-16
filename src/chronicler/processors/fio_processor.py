@@ -74,8 +74,30 @@ class FioProcessor(BaseProcessor):
     Aggregates results across all jobs while preserving per-job details.
     """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._fio_version = None  # Stores benchmark version extracted from fio-results.json
+
     def get_test_name(self) -> str:
         return "fio"
+
+    def build_test_info(self):
+        """Override to use benchmark version from fio-results.json instead of wrapper version.
+
+        Extracts FIO benchmark version from fio-results.json top-level field
+        (e.g., "fio version": "fio-3.36") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._fio_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
+        )
 
     def _extract_primary_metrics(
         self, runs: Dict[str, Any],
@@ -169,6 +191,9 @@ class FioProcessor(BaseProcessor):
                 ...
             }
         """
+        # Reset state to prevent leakage between parse calls
+        self._fio_version = None
+
         files = extracted_result.get("files") or {}
         if files.get("fio_results_json"):
             # Direct file path (demo / tmp/coremark-style layout)
@@ -359,6 +384,11 @@ class FioProcessor(BaseProcessor):
         version: Optional[str]
     ) -> Run:
         """Build a Run object for one FIO workload test."""
+
+        # Extract FIO benchmark version from JSON (e.g., "fio-3.36")
+        # Store in instance variable for use in build_test_info()
+        if not self._fio_version and "fio version" in fio_data:
+            self._fio_version = fio_data["fio version"]
 
         # Parse workload info from directory name
         workload_info = self._parse_workload_dir_name(workload_dir.name)

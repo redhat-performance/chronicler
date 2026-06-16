@@ -191,6 +191,9 @@ class FioProcessor(BaseProcessor):
                 ...
             }
         """
+        # Reset state to prevent leakage between parse calls
+        self._fio_version = None
+
         files = extracted_result.get("files") or {}
         if files.get("fio_results_json"):
             # Direct file path (demo / tmp/coremark-style layout)

@@ -22,6 +22,10 @@ logger = logging.getLogger(__name__)
 class PhoronixProcessor(BaseProcessor):
     """Processor for Phoronix Test Suite benchmark results."""
 
+    def __init__(self, result_directory: str):
+        super().__init__(result_directory)
+        self._benchmark_version = None  # Stores benchmark version from CSV comments
+
     def get_test_name(self) -> str:
         return "phoronix"
 
@@ -39,6 +43,9 @@ class PhoronixProcessor(BaseProcessor):
         Returns:
             A dictionary of Run objects, keyed by run_key (typically just "run_0").
         """
+        # Reset benchmark version state to prevent stale version from previous parse
+        self._benchmark_version = None
+
         extracted_path = Path(extracted_result['extracted_path'])
 
         # Find the results.csv file (may be nested)
@@ -49,6 +56,9 @@ class PhoronixProcessor(BaseProcessor):
             return {}
 
         csv_file = csv_files[0]
+
+        # Extract benchmark version from CSV comments before parsing
+        self._extract_benchmark_version_from_csv(csv_file)
 
         # Parse the CSV file
         run_data = self._parse_phoronix_csv(csv_file)
@@ -155,6 +165,25 @@ class PhoronixProcessor(BaseProcessor):
 
         return run_data
 
+    def _extract_benchmark_version_from_csv(self, csv_file: Path) -> None:
+        """
+        Extract Phoronix benchmark version from CSV comments.
+
+        Looks for pattern: # Results version: v10.8.1
+        Sets self._benchmark_version if found.
+        """
+        try:
+            with open(csv_file, 'r') as f:
+                for line in f:
+                    if line.startswith('#') and 'Results version:' in line:
+                        match = re.search(r'Results version:\s*(\S+)', line)
+                        if match:
+                            self._benchmark_version = match.group(1)
+                            logger.debug(f"Extracted Phoronix version: {self._benchmark_version}")
+                            return
+        except Exception as e:
+            logger.warning(f"Failed to extract benchmark version from {csv_file}: {e}")
+
     def _build_run_object(self, run_data: Dict[str, Any]) -> Run:
         """Convert raw run data dictionary to Run dataclass object."""
 
@@ -210,4 +239,22 @@ class PhoronixProcessor(BaseProcessor):
             configuration=run_data.get("configuration", {}),
             timeseries=timeseries if timeseries else None,
             timeseries_summary=ts_summary
+        )
+
+    def build_test_info(self):
+        """Override to use benchmark version from CSV instead of wrapper version.
+
+        Extracts Phoronix benchmark version from CSV comments
+        (e.g., "# Results version: v10.8.1") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._benchmark_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
         )

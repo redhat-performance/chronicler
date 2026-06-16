@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional, List
 from pathlib import Path
 import logging
 import statistics
+import re
 
 from .base_processor import BaseProcessor, ProcessorError
 from .timestamp_utils import validate_iso8601_timestamp, interpolate_timestamps
@@ -30,6 +31,10 @@ def _validate_uperf_timestamp(value: str, context: str) -> str:
 
 class UperfProcessor(BaseProcessor):
     """Processor for Uperf network performance benchmark results."""
+
+    def __init__(self, result_directory: str):
+        super().__init__(result_directory)
+        self._benchmark_version = None  # Stores benchmark version from CSV comments
 
     def get_test_name(self) -> str:
         return "uperf"
@@ -51,6 +56,9 @@ class UperfProcessor(BaseProcessor):
         Returns:
             A dictionary of Run objects, keyed by run_key (typically "run_0").
         """
+        # Reset benchmark version state to prevent stale version from previous parse
+        self._benchmark_version = None
+
         csv_file: Optional[Path] = None
         result_dir: Optional[Path] = None
 
@@ -96,6 +104,9 @@ class UperfProcessor(BaseProcessor):
                     return run_objects
 
         if csv_file and csv_file.exists():
+            # Extract benchmark version from CSV comments before parsing
+            self._extract_benchmark_version_from_csv(csv_file)
+
             run_data = self._parse_uperf_single_csv(csv_file)
             run_objects = {}
             if run_data:
@@ -108,6 +119,43 @@ class UperfProcessor(BaseProcessor):
         raise ProcessorError(
             "Uperf: no results_uperf.csv found and no net_results with run_metadata. "
             "Expected CSV with columns including Start_Date,End_Date (ISO 8601)."
+        )
+
+    def _extract_benchmark_version_from_csv(self, csv_file: Path) -> None:
+        """
+        Extract Uperf benchmark version from CSV comments.
+
+        Looks for pattern: # Results version: 1.0
+        Sets self._benchmark_version if found.
+        """
+        try:
+            with open(csv_file, 'r') as f:
+                for line in f:
+                    if line.startswith('#') and 'Results version:' in line:
+                        match = re.search(r'Results version:\s*(\S+)', line)
+                        if match:
+                            self._benchmark_version = match.group(1)
+                            logger.debug(f"Extracted Uperf version: {self._benchmark_version}")
+                            return
+        except Exception as e:
+            logger.warning(f"Failed to extract benchmark version from {csv_file}: {e}")
+
+    def build_test_info(self):
+        """Override to use benchmark version from CSV instead of wrapper version.
+
+        Extracts Uperf benchmark version from CSV comments
+        (e.g., "# Results version: 1.0") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._benchmark_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
         )
 
     def _parse_uperf_single_csv(self, csv_file: Path) -> Dict[str, Any]:

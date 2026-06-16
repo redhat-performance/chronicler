@@ -14,6 +14,7 @@ Auto HPL produces:
 from typing import Dict, Any, Optional
 from pathlib import Path
 import logging
+import re
 
 from .base_processor import BaseProcessor, ProcessorError
 from .timestamp_utils import validate_iso8601_timestamp
@@ -33,6 +34,10 @@ def _validate_autohpl_timestamp(value: str, context: str) -> str:
 
 class AutoHPLProcessor(BaseProcessor):
     """Processor for Auto HPL (High-Performance Linpack) benchmark results"""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._autohpl_version = None  # Stores benchmark version from CSV comments
 
     def get_test_name(self) -> str:
         return "auto_hpl"
@@ -58,6 +63,9 @@ class AutoHPLProcessor(BaseProcessor):
                 }
             }
         """
+        # Reset benchmark version state to prevent stale version from previous parse
+        self._autohpl_version = None
+
         csv_file: Optional[Path] = None
         result_dir: Optional[Path] = None
 
@@ -93,6 +101,9 @@ class AutoHPLProcessor(BaseProcessor):
                 "Ensure the results CSV exists and includes Start_Date and End_Date (ISO 8601)."
             )
 
+        # Extract benchmark version from CSV comments before parsing
+        self._extract_benchmark_version_from_csv(csv_file)
+
         hpl_result = self._parse_hpl_csv(csv_file)
         if not hpl_result:
             raise ProcessorError(
@@ -119,6 +130,43 @@ class AutoHPLProcessor(BaseProcessor):
 
         logger.info(f"Parsed 1 Auto HPL run: {hpl_result.get('gflops', 0):.2f} GFLOPS")
         return runs
+
+    def _extract_benchmark_version_from_csv(self, csv_file: Path) -> None:
+        """
+        Extract Auto HPL benchmark version from CSV comments.
+
+        Looks for pattern: # Results version: 1.0
+        Sets self._autohpl_version if found.
+        """
+        try:
+            with open(csv_file, 'r') as f:
+                for line in f:
+                    if line.startswith('#') and 'Results version:' in line:
+                        match = re.search(r'Results version:\s*(\S+)', line)
+                        if match:
+                            self._autohpl_version = match.group(1)
+                            logger.debug(f"Extracted Auto HPL version: {self._autohpl_version}")
+                            return
+        except Exception as e:
+            logger.warning(f"Failed to extract benchmark version from {csv_file}: {e}")
+
+    def build_test_info(self):
+        """Override to use benchmark version from CSV instead of wrapper version.
+
+        Extracts Auto HPL benchmark version from CSV comments
+        (e.g., "# Results version: 1.0") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._autohpl_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
+        )
 
     def _parse_hpl_csv(self, csv_file: Path) -> Dict[str, Any]:
         """

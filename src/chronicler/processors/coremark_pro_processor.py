@@ -31,6 +31,10 @@ def _validate_coremark_pro_timestamp(value: str, context: str) -> str:
 class CoreMarkProProcessor(BaseProcessor):
     """Processor for CoreMark Pro comprehensive benchmark results."""
 
+    def __init__(self, result_directory: str):
+        super().__init__(result_directory)
+        self._benchmark_version = None  # Stores benchmark version from CSV comments
+
     def get_test_name(self) -> str:
         return "coremark_pro"
 
@@ -48,6 +52,9 @@ class CoreMarkProProcessor(BaseProcessor):
         Returns:
             A dictionary of Run objects, keyed by run_key (typically just "run_0").
         """
+        # Reset benchmark version state to prevent stale version from previous parse
+        self._benchmark_version = None
+
         csv_file: Optional[Path] = None
         result_dir: Optional[Path] = None
 
@@ -77,6 +84,9 @@ class CoreMarkProProcessor(BaseProcessor):
                 f"CoreMark Pro results CSV not found: {csv_file}. "
                 "Ensure the file exists and includes Start_Date and End_Date columns (ISO 8601)."
             )
+
+        # Extract benchmark version from CSV comments before parsing
+        self._extract_benchmark_version_from_csv(csv_file)
 
         run_data = self._parse_coremark_pro_csv(csv_file)
 
@@ -288,4 +298,41 @@ class CoreMarkProProcessor(BaseProcessor):
             timeseries_summary=ts_summary,
             start_time=run_data.get("start_timestamp"),
             end_time=run_data.get("end_timestamp"),
+        )
+
+    def _extract_benchmark_version_from_csv(self, csv_file: Path) -> None:
+        """
+        Extract CoreMark Pro benchmark version from CSV comments.
+
+        Looks for pattern: # Results version: v1.1.2743
+        Sets self._benchmark_version if found.
+        """
+        try:
+            with open(csv_file, 'r') as f:
+                for line in f:
+                    if line.startswith('#') and 'Results version:' in line:
+                        match = re.search(r'Results version:\s*(\S+)', line)
+                        if match:
+                            self._benchmark_version = match.group(1)
+                            logger.debug(f"Extracted CoreMark Pro version: {self._benchmark_version}")
+                            return
+        except Exception as e:
+            logger.warning(f"Failed to extract benchmark version from {csv_file}: {e}")
+
+    def build_test_info(self):
+        """Override to use benchmark version from CSV instead of wrapper version.
+
+        Extracts CoreMark Pro benchmark version from CSV comments
+        (e.g., "# Results version: v1.1.2743") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._benchmark_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
         )

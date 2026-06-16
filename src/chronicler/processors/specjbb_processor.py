@@ -31,6 +31,10 @@ def _validate_specjbb_timestamp(value: str, context: str) -> str:
 class SpecJBBProcessor(BaseProcessor):
     """Processor for SpecJBB Java benchmark results."""
 
+    def __init__(self, result_directory: str):
+        super().__init__(result_directory)
+        self._benchmark_version = None  # Stores benchmark version from CSV comments
+
     def get_test_name(self) -> str:
         return "specjbb"
 
@@ -56,6 +60,9 @@ class SpecJBBProcessor(BaseProcessor):
                 }
             }
         """
+        # Reset benchmark version state to prevent stale version from previous parse
+        self._benchmark_version = None
+
         csv_file: Optional[Path] = None
         result_dir: Optional[Path] = None
 
@@ -82,6 +89,9 @@ class SpecJBBProcessor(BaseProcessor):
             logger.warning(f"SpecJBB CSV file not found: {csv_file}")
             return {}
 
+        # Extract benchmark version from CSV comments before parsing
+        self._extract_benchmark_version_from_csv(csv_file)
+
         warehouse_data, num_jvms = self._parse_csv(csv_file)
 
         # Parse detailed results from .txt file for overall score (optional)
@@ -106,6 +116,43 @@ class SpecJBBProcessor(BaseProcessor):
 
         logger.info(f"Parsed {len(runs)} SpecJBB runs")
         return runs
+
+    def _extract_benchmark_version_from_csv(self, csv_file: Path) -> None:
+        """
+        Extract SpecJBB benchmark version from CSV comments.
+
+        Looks for pattern: # Results version: 1.0
+        Sets self._benchmark_version if found.
+        """
+        try:
+            with open(csv_file, 'r') as f:
+                for line in f:
+                    if line.startswith('#') and 'Results version:' in line:
+                        match = re.search(r'Results version:\s*(\S+)', line)
+                        if match:
+                            self._benchmark_version = match.group(1)
+                            logger.debug(f"Extracted SpecJBB version: {self._benchmark_version}")
+                            return
+        except Exception as e:
+            logger.warning(f"Failed to extract benchmark version from {csv_file}: {e}")
+
+    def build_test_info(self):
+        """Override to use benchmark version from CSV instead of wrapper version.
+
+        Extracts SpecJBB benchmark version from CSV comments
+        (e.g., "# Results version: 1.0") and uses it for test.version,
+        while preserving wrapper_version from base implementation.
+        """
+        from ..schema import TestInfo
+
+        base_info = super().build_test_info()
+
+        # Use benchmark version if extracted, otherwise fall back to wrapper version
+        return TestInfo(
+            name=self.get_test_name(),
+            version=self._benchmark_version or base_info.version,
+            wrapper_version=base_info.wrapper_version
+        )
 
     def _find_csv_file(self, specjbb_dir: Path) -> Optional[Path]:
         """Find the CSV file in the SpecJBB results directory."""

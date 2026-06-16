@@ -106,3 +106,35 @@ Copy,1.0,2026-02-04T00:19:56Z,2026-02-04T00:20:00Z"""
         test_info = processor.build_test_info()
 
         assert test_info.version == expected, f"Should handle version format: {version_str}"
+
+
+def test_streams_version_resets_between_parses(result_dir):
+    """Processor reuse: version state should not leak between parse_runs() calls."""
+    # First parse: CSV with benchmark version
+    csv1 = """# streams_version_# 5.10
+# Optimization level: O2
+Array sizes,16384k,Start_Date,End_Date
+Copy,1.0,2026-02-04T00:19:56Z,2026-02-04T00:20:00Z"""
+    path1 = _write_csv(result_dir, csv1)
+
+    # Create test_info file with wrapper version for fallback
+    test_info_file = result_dir / "test_info"
+    test_info_file.write_text('{"streams": {"test_name": "streams", "repo_file": "v2.8.tar.gz"}}')
+
+    processor = StreamsProcessor(str(result_dir))
+    processor.parse_runs({"files": {FILE_KEY: str(path1)}})
+    test_info1 = processor.build_test_info()
+
+    assert test_info1.version == "5.10", "First parse should extract benchmark version"
+
+    # Second parse: CSV WITHOUT benchmark version (reusing same processor instance)
+    csv2 = """# Optimization level: O3
+Array sizes,16384k,Start_Date,End_Date
+Copy,2.0,2026-02-05T00:19:56Z,2026-02-05T00:20:00Z"""
+    path2 = _write_csv(result_dir, csv2)
+
+    processor.parse_runs({"files": {FILE_KEY: str(path2)}})
+    test_info2 = processor.build_test_info()
+
+    assert test_info2.version == "v2.8", "Second parse should fall back to wrapper version, not retain stale '5.10'"
+    assert test_info2.wrapper_version == "v2.8"

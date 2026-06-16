@@ -143,6 +143,8 @@ class StreamsProcessor(BaseProcessor):
                 }
             }
         """
+        # Reset benchmark version to prevent state leakage across multiple parses
+        self._benchmark_version = None
         # Resolve CSV path: direct file (demo/style like tmp/coremark) or from extracted_path
         csv_file: Optional[Path] = None
         streams_dir: Optional[Path] = None

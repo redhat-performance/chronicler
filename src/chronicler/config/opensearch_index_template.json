@@ -15,7 +15,7 @@
       }
     },
     "mappings": {
-      "dynamic": false,
+      "dynamic": true,
       "dynamic_templates": [
         {
           "test_config_parameters_as_keyword": {
@@ -26,86 +26,11 @@
           }
         },
         {
-          "run_objects": {
-            "path_match": "results.runs.*",
+          "strings_as_keyword": {
+            "match_mapping_type": "string",
             "mapping": {
-              "type": "object",
-              "properties": {
-                "run_number": {"type": "integer"},
-                "status": {"type": "keyword"},
-                "start_time": {"type": "date"},
-                "end_time": {"type": "date"},
-                "duration_seconds": {"type": "float"},
-                "configuration": {"type": "object", "enabled": true},
-                "metrics": {"type": "object", "enabled": true},
-                "validation": {"type": "object", "enabled": true}
-              }
-            }
-          }
-        },
-        {
-          "timeseries_objects": {
-            "path_match": "results.runs.*.timeseries.*",
-            "mapping": {
-              "type": "object",
-              "properties": {
-                "timestamp": {"type": "date"},
-                "metrics": {"type": "object", "enabled": true}
-              }
-            }
-          }
-        },
-        {
-          "numa_nodes": {
-            "path_match": "system_under_test.hardware.numa.*",
-            "mapping": {
-              "type": "object",
-              "properties": {
-                "node_id": {"type": "integer"},
-                "cpus": {"type": "keyword"},
-                "memory_gb": {"type": "float"}
-              }
-            }
-          }
-        },
-        {
-          "storage_devices": {
-            "path_match": "system_under_test.hardware.storage.*",
-            "mapping": {
-              "type": "object",
-              "enabled": true
-            }
-          }
-        },
-        {
-          "network_interfaces": {
-            "path_match": "system_under_test.hardware.network.*",
-            "mapping": {
-              "type": "object",
-              "enabled": true
-            }
-          }
-        },
-        {
-          "cpu_flags": {
-            "path_match": "system_under_test.hardware.cpu.flags.*",
-            "mapping": {
-              "type": "boolean"
-            }
-          }
-        },
-        {
-          "validation_threads": {
-            "path_match": "results.runs.*.validation.threads",
-            "mapping": {
-              "type": "nested",
-              "properties": {
-                "thread": {"type": "integer"},
-                "crcfinal": {"type": "keyword"},
-                "crclist": {"type": "keyword"},
-                "crcmatrix": {"type": "keyword"},
-                "crcstate": {"type": "keyword"}
-              }
+              "type": "keyword",
+              "ignore_above": 1024
             }
           }
         }
@@ -175,7 +100,7 @@
                 },
                 "storage": {
                   "type": "object",
-                  "dynamic": true
+                  "enabled": false
                 },
                 "network": {
                   "type": "object",

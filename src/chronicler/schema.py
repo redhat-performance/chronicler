@@ -46,6 +46,11 @@ class Metadata:
     # URL to the Performance CoPilot (PCP) archive for this test run (e.g. internal server, S3).
     pcp_archive_url: Optional[str] = None
 
+    # UUIDs for tracking (Zathras integration)
+    project_uuid: Optional[str] = None
+    run_uuid: Optional[str] = None
+    result_uuid: Optional[str] = None
+
     def to_dict(self) -> Dict[str, Any]:
         return {k: v for k, v in asdict(self).items() if v is not None}
 

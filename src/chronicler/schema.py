@@ -408,16 +408,18 @@ class ZathrasDocument:
         doc_dict = copy.deepcopy(self.to_dict_summary_only())
 
         # Remove fields that change on re-processing or are metadata-only
-        if exclude_processing_timestamp and 'metadata' in doc_dict:
-            # Remove ALL timestamps - they're metadata, not test results
-            doc_dict['metadata'].pop('processing_timestamp', None)
-            doc_dict['metadata'].pop('test_timestamp', None)
-            doc_dict['metadata'].pop('collection_timestamp', None)
-            # Also remove document_id as we're computing it
+        if 'metadata' in doc_dict:
+            if exclude_processing_timestamp:
+                # Remove ALL timestamps - they're metadata, not test results
+                doc_dict['metadata'].pop('processing_timestamp', None)
+                doc_dict['metadata'].pop('test_timestamp', None)
+                doc_dict['metadata'].pop('collection_timestamp', None)
+            # Always remove these fields regardless of timestamp flag
+            # Document ID is computed from hash, so it shouldn't be in the hash
             doc_dict['metadata'].pop('document_id', None)
             # PCP archive URL is storage location, not part of result identity
             doc_dict['metadata'].pop('pcp_archive_url', None)
-            # UUIDs are identifiers, not content - exclude from hash
+            # UUIDs are identifiers, not content - always exclude from hash
             doc_dict['metadata'].pop('project_uuid', None)
             doc_dict['metadata'].pop('run_uuid', None)
             doc_dict['metadata'].pop('result_uuid', None)

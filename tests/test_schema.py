@@ -72,6 +72,27 @@ class TestMetadata:
         assert d["instance_type"] == "m5.large"
         assert d["iteration"] == 1
 
+    def test_to_dict_includes_uuids_when_set(self):
+        """Test that UUID fields are included in to_dict() when present."""
+        meta = Metadata(
+            document_id="doc123",
+            project_uuid="550e8400-e29b-41d4-a716-446655440000",
+            run_uuid="660e8400-e29b-41d4-a716-446655440001",
+            result_uuid="770e8400-e29b-41d4-a716-446655440002",
+        )
+        d = meta.to_dict()
+        assert d["project_uuid"] == "550e8400-e29b-41d4-a716-446655440000"
+        assert d["run_uuid"] == "660e8400-e29b-41d4-a716-446655440001"
+        assert d["result_uuid"] == "770e8400-e29b-41d4-a716-446655440002"
+
+    def test_to_dict_excludes_uuids_when_not_set(self):
+        """Test backward compatibility: UUID fields are excluded when None."""
+        meta = Metadata(document_id="doc123")
+        d = meta.to_dict()
+        assert "project_uuid" not in d
+        assert "run_uuid" not in d
+        assert "result_uuid" not in d
+
 
 class TestTestInfo:
     """Tests for TestInfo dataclass."""
@@ -520,6 +541,68 @@ class TestZathrasDocument:
             results=Results(status="PASS"),
         )
         assert doc1.calculate_content_hash() != doc2.calculate_content_hash()
+
+    def test_calculate_content_hash_excludes_uuids(self):
+        """Test that UUID fields don't affect content hash (they're identifiers, not content)."""
+        doc1 = ZathrasDocument(
+            metadata=Metadata(
+                document_id="doc123",
+                project_uuid="550e8400-e29b-41d4-a716-446655440000",
+                run_uuid="660e8400-e29b-41d4-a716-446655440001",
+                result_uuid="770e8400-e29b-41d4-a716-446655440002",
+            ),
+            test=TestInfo(name="test", version="1.0"),
+            system_under_test=SystemUnderTest(),
+            test_configuration=TestConfiguration(),
+            results=Results(status="PASS"),
+        )
+        doc2 = ZathrasDocument(
+            metadata=Metadata(
+                document_id="doc456",
+                project_uuid="880e8400-e29b-41d4-a716-446655440003",
+                run_uuid="990e8400-e29b-41d4-a716-446655440004",
+                result_uuid="aa0e8400-e29b-41d4-a716-446655440005",
+            ),
+            test=TestInfo(name="test", version="1.0"),
+            system_under_test=SystemUnderTest(),
+            test_configuration=TestConfiguration(),
+            results=Results(status="PASS"),
+        )
+        # Same content, different UUIDs - should produce same hash
+        assert doc1.calculate_content_hash() == doc2.calculate_content_hash()
+
+    def test_calculate_content_hash_excludes_uuids_regardless_of_timestamp_flag(self):
+        """Test that UUIDs are excluded even when exclude_processing_timestamp=False."""
+        doc1 = ZathrasDocument(
+            metadata=Metadata(
+                document_id="doc123",
+                test_timestamp="2026-03-17T10:00:00Z",
+                project_uuid="550e8400-e29b-41d4-a716-446655440000",
+                run_uuid="660e8400-e29b-41d4-a716-446655440001",
+                result_uuid="770e8400-e29b-41d4-a716-446655440002",
+            ),
+            test=TestInfo(name="test", version="1.0"),
+            system_under_test=SystemUnderTest(),
+            test_configuration=TestConfiguration(),
+            results=Results(status="PASS"),
+        )
+        doc2 = ZathrasDocument(
+            metadata=Metadata(
+                document_id="doc456",
+                test_timestamp="2026-03-17T10:00:00Z",
+                project_uuid="880e8400-e29b-41d4-a716-446655440003",
+                run_uuid="990e8400-e29b-41d4-a716-446655440004",
+                result_uuid="aa0e8400-e29b-41d4-a716-446655440005",
+            ),
+            test=TestInfo(name="test", version="1.0"),
+            system_under_test=SystemUnderTest(),
+            test_configuration=TestConfiguration(),
+            results=Results(status="PASS"),
+        )
+        # Same content, different UUIDs, timestamp flag False - UUIDs still excluded
+        hash1 = doc1.calculate_content_hash(exclude_processing_timestamp=False)
+        hash2 = doc2.calculate_content_hash(exclude_processing_timestamp=False)
+        assert hash1 == hash2
 
     def test_extract_timeseries_documents(self, full_document):
         ts_docs = full_document.extract_timeseries_documents()

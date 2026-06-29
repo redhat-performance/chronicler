@@ -394,6 +394,7 @@ class ZathrasDocument:
         The hash excludes:
         - All timestamps (test_timestamp, processing_timestamp, collection_timestamp)
         - Document ID (computed from hash)
+        - UUIDs (project_uuid, run_uuid, result_uuid - identifiers, not content)
         - Timeseries data (stored separately, often has synthetic timestamps)
 
         Args:
@@ -416,6 +417,10 @@ class ZathrasDocument:
             doc_dict['metadata'].pop('document_id', None)
             # PCP archive URL is storage location, not part of result identity
             doc_dict['metadata'].pop('pcp_archive_url', None)
+            # UUIDs are identifiers, not content - exclude from hash
+            doc_dict['metadata'].pop('project_uuid', None)
+            doc_dict['metadata'].pop('run_uuid', None)
+            doc_dict['metadata'].pop('result_uuid', None)
 
         # Sort keys for deterministic ordering
         sorted_json = json.dumps(doc_dict, sort_keys=True, separators=(',', ':'))

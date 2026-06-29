@@ -542,6 +542,35 @@ class TestZathrasDocument:
         )
         assert doc1.calculate_content_hash() != doc2.calculate_content_hash()
 
+    def test_calculate_content_hash_excludes_uuids(self):
+        """Test that UUID fields don't affect content hash (they're identifiers, not content)."""
+        doc1 = ZathrasDocument(
+            metadata=Metadata(
+                document_id="doc123",
+                project_uuid="550e8400-e29b-41d4-a716-446655440000",
+                run_uuid="660e8400-e29b-41d4-a716-446655440001",
+                result_uuid="770e8400-e29b-41d4-a716-446655440002",
+            ),
+            test=TestInfo(name="test", version="1.0"),
+            system_under_test=SystemUnderTest(),
+            test_configuration=TestConfiguration(),
+            results=Results(status="PASS"),
+        )
+        doc2 = ZathrasDocument(
+            metadata=Metadata(
+                document_id="doc456",
+                project_uuid="880e8400-e29b-41d4-a716-446655440003",
+                run_uuid="990e8400-e29b-41d4-a716-446655440004",
+                result_uuid="aa0e8400-e29b-41d4-a716-446655440005",
+            ),
+            test=TestInfo(name="test", version="1.0"),
+            system_under_test=SystemUnderTest(),
+            test_configuration=TestConfiguration(),
+            results=Results(status="PASS"),
+        )
+        # Same content, different UUIDs - should produce same hash
+        assert doc1.calculate_content_hash() == doc2.calculate_content_hash()
+
     def test_extract_timeseries_documents(self, full_document):
         ts_docs = full_document.extract_timeseries_documents()
         assert len(ts_docs) == 2

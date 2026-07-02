@@ -47,11 +47,11 @@ Dependencies and optional extras are defined in `pyproject.toml`. Prefer the com
 ```bash
 cd /path/to/chronicler
 pip install -e ".[opensearch,dev]"   # if not already installed for development
-pytest tests/ -v         # Run full suite (209 tests)
+pytest tests/ -v         # Run full suite (327 tests)
 
 # Run by category
-pytest -m unit           # Fast unit tests only (178 tests)
-pytest -m integration    # Integration tests with file I/O (20 tests)
+pytest -m unit           # Fast unit tests only (248 tests)
+pytest -m integration    # Integration tests with file I/O (25 tests)
 ```
 
 The test suite covers:

@@ -104,7 +104,10 @@ class HammerDBProcessor(BaseProcessor):
         underlying test failed to produce a result (e.g. hammerdbcli missing),
         leaving connection/TPM blank. Those rows are dropped here rather than
         raising, so a partially-broken run still reports whatever configurations
-        did produce data.
+        did produce data. Start_Date/End_Date, by contrast, are always required
+        and validated -- a missing or malformed timestamp raises ProcessorError,
+        since that indicates CSV corruption rather than a normal HammerDB
+        partial-failure mode.
         """
         valid = []
         for row in rows:
@@ -113,11 +116,12 @@ class HammerDBProcessor(BaseProcessor):
             if not isinstance(connection, (int, float)) or not isinstance(tpm, (int, float)):
                 continue
 
-            start_ts = row.get('Start_Date')
-            if start_ts:
-                validate_iso8601_timestamp(
-                    start_ts, f"connection={connection}:", test_name="HammerDB"
-                )
+            row['Start_Date'] = validate_iso8601_timestamp(
+                row.get('Start_Date'), f"connection={connection}:", test_name="HammerDB"
+            )
+            row['End_Date'] = validate_iso8601_timestamp(
+                row.get('End_Date'), f"connection={connection}:", test_name="HammerDB"
+            )
 
             valid.append(row)
 

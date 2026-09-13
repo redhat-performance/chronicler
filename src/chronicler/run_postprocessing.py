@@ -44,6 +44,11 @@ from .processors.pig_processor import PigProcessor
 from .processors.autohpl_processor import AutoHPLProcessor
 from .processors.speccpu2017_processor import SpecCPU2017Processor
 from .processors.fio_processor import FioProcessor
+from .processors.hammerdb_processor import (
+    HammerDBMariaDBProcessor,
+    HammerDBMSSQLProcessor,
+    HammerDBPostgresProcessor,
+)
 
 # Import exporters
 from .exporters.opensearch_exporter import OpenSearchExporter
@@ -68,6 +73,9 @@ PROCESSOR_REGISTRY = {
     'auto_hpl': AutoHPLProcessor,
     'speccpu2017': SpecCPU2017Processor,
     'fio': FioProcessor,
+    'hammerdb_mariadb': HammerDBMariaDBProcessor,
+    'hammerdb_mssql': HammerDBMSSQLProcessor,
+    'hammerdb_postgres': HammerDBPostgresProcessor,
 }
 
 

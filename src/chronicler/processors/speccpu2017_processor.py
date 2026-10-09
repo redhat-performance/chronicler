@@ -118,7 +118,13 @@ class SpecCPU2017Processor(BaseProcessor):
             result_subdir = result_dir / "result"
             if not result_subdir.exists():
                 result_subdir = result_dir
-            for csv_file in result_subdir.rglob("*.csv"):
+            # Prefer the wrapper's "*.results.csv" (has Start_Date/End_Date) over
+            # SPEC's own native report CSVs of the same suite, which lack timestamps.
+            candidates = sorted(
+                result_subdir.rglob("*.csv"),
+                key=lambda p: p.name.lower().endswith(".results.csv"),
+            )
+            for csv_file in candidates:
                 name_lower = csv_file.name.lower()
                 if "intrate" in name_lower or "intspeed" in name_lower:
                     if "rate" in name_lower:

@@ -67,6 +67,33 @@ def test_speccpu2017_no_timestamp_columns(result_dir):
     )
 
 
+def test_speccpu2017_prefers_results_csv_over_native_csv(result_dir):
+    """
+    Regression for issue #65: when both SPEC's native report CSV (legacy,
+    no timestamps) and the wrapper's "*.results.csv" (has Start_Date/End_Date)
+    exist for the same suite, the processor must pick the results.csv one
+    instead of erroring out on whichever file rglob() happens to visit last.
+    """
+    nested = result_dir / "results_speccpu_virtual-guest_2026.09.17" / "result"
+    nested.mkdir(parents=True)
+
+    native_csv = """Benchmark,Base # Copies,Base Run Time,Base Rate
+500.perlbench_r,1,100.5,9.95"""
+    (nested / "CPU2017.003.intrate.refrate.csv").write_text(native_csv.strip())
+
+    wrapper_csv = """Benchmarks,Base copies,Base Run Time,Base Rate,Start_Date,End_Date
+500.perlbench_r,1,100.5,9.95,2026-09-17T16:00:00Z,2026-09-17T16:10:00Z"""
+    (nested / "CPU2017.003.intrate.refrate.results.csv").write_text(wrapper_csv.strip())
+
+    run_processor_parse(
+        SpecCPU2017Processor,
+        result_dir,
+        {},
+        expect_error=False,
+        extracted_extra={"extracted_path": str(result_dir)},
+    )
+
+
 def test_speccpu2017_invalid_timestamp_in_row(result_dir):
     """Malformed Start_Date in a row raises ProcessorError."""
     csv = """Benchmarks,Base copies,Base Run Time,Base Rate,Start_Date,End_Date
